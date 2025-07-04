@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 const HomeScreen = () => {
     const navigation = useNavigation()
   return (
-    <View style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+    <View className="flex-1 justify-center bg-red-400">
       <TouchableOpacity onPress={()=> navigation.navigate('Profile')}>
         <Text>Home Screen</Text>
       </TouchableOpacity>
