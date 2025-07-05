@@ -1,12 +1,13 @@
 import * as React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import HomeScreen from './src/screens/HomeScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import ProgressScreen from './src/screens/ProgressScreen';
 import HabbitsScreen from './src/screens/HabbitsScreen';
 import './global.css';
+import AddHabitModal from './src/screens/AddHabitModal';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -14,15 +15,11 @@ const Tab = createBottomTabNavigator();
 function RootStack() {
   return (
     <Stack.Navigator
-      initialRouteName="Home"
+      initialRouteName="Habbits"
       screenOptions={{
         headerStyle: {backgroundColor: 'tomato'},
       }}>
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{title: 'Home'}}
-      />
+      <Stack.Screen name="AddHabit" component={AddHabitModal} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
   );
@@ -34,7 +31,6 @@ function BottomTabRootStack() {
       screenOptions={{
         tabBarStyle: {position: 'absolute'},
       }}>
-      <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Habbits" component={HabbitsScreen} />
       <Tab.Screen name="Progress" component={ProgressScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
@@ -43,9 +39,17 @@ function BottomTabRootStack() {
 }
 export default function App() {
   return (
-    <NavigationContainer>
-      {/* <RootStack /> */}
-      <BottomTabRootStack />
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{headerShown: false}}>
+          <Stack.Screen name="Tabs" component={BottomTabRootStack} />
+          <Stack.Screen
+            name="AddHabit"
+            component={AddHabitModal}
+            options={{presentation: 'modal'}}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
