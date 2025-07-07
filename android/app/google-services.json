@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "687916973600",
+    "project_id": "habitmind-8f0af",
+    "storage_bucket": "habitmind-8f0af.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:687916973600:android:a0e7d847766f27822e0645",
+        "android_client_info": {
+          "package_name": "com.habitmind"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8Ddlj9C9iOft2sQgIAmBUEhkqh4gl_Fw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -9,6 +9,7 @@ import './global.css';
 import AddHabitModal from './src/screens/AddHabitModal';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import SignInScreen from './src/screens/SignIn';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -28,22 +29,16 @@ function RootStack() {
 
 function BottomTabRootStack() {
   return (
-    // <Tab.Navigator
-    //   screenOptions={{
-    //     tabBarStyle: {position: 'absolute'},
-    //   }}>
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({route}) => ({
         tabBarStyle: {
           position: 'absolute',
           height: 60,
-          // borderTopLeftRadius: 20,
-          // borderTopRightRadius: 20,
         },
         tabBarActiveTintColor: '#7C3AED', // violet-600
         tabBarInactiveTintColor: '#A1A1AA', // gray-400
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({focused, color, size}) => {
           let iconName;
 
           if (route.name === 'Habbits') {
@@ -52,15 +47,17 @@ function BottomTabRootStack() {
             iconName = focused ? 'bar-chart' : 'bar-chart-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person-circle' : 'person-circle-outline';
+          } else if (route.name === 'Sign In') {
+            iconName = focused ? 'person-circle' : 'person-circle-outline';
           }
 
           return <Ionicons name={iconName} size={24} color={color} />;
         },
-      })}
-    >
+      })}>
       <Tab.Screen name="Habbits" component={HabbitsScreen} />
       <Tab.Screen name="Progress" component={ProgressScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Sign In" component={SignInScreen} />
+      {/* <Tab.Screen name="Profile" component={ProfileScreen} /> */}
     </Tab.Navigator>
   );
 }

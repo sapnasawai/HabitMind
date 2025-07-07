@@ -24,29 +24,34 @@ const HabbitsScreen = () => {
       name: 'Drink Water',
       description: 'Stay hydrated by drinking a glass of water.',
       time: '9:00 AM',
-      icon: null,
+      icon: 'water-outline',
       reminder: true,
+      isSelected: true,
+     
     },
     {
       name: 'Morning Meditation',
       description: 'Start the day with 10 minutes of calm meditation.',
       time: '6:30 AM',
-      icon: null,
+      icon: 'leaf-outline',
       reminder: true,
+      isSelected: false,
     },
     {
       name: 'Evening Walk',
       description: 'Take a short walk after dinner.',
       time: '7:00 PM',
-      icon: null,
+      icon:'walk-outline',
       reminder: false,
+      isSelected: true,
     },
     {
       name: 'Read Book',
       description: 'Read at least 10 pages of any book.',
       time: '9:00 PM',
-      icon: null,
+      icon: 'book-outline',
       reminder: true,
+      isSelected: false,
     },
   ];
 
@@ -118,7 +123,13 @@ const HabbitsScreen = () => {
         </View>
 
         <View className="ml-3">
-          <View className="border border-violet-400 rounded-full w-6 h-6" />
+          {item.isSelected ? (
+            <View className="border border-violet-400 rounded-full w-8 h-8 bg-violet-400 items-center justify-center">
+              <Icon name="checkmark" size={16} color="white" />
+            </View>
+          ) : (
+            <View className="border border-violet-400 rounded-full w-8 h-8" />
+          )}
         </View>
       </Pressable>
     </Animated.View>
@@ -127,7 +138,7 @@ const HabbitsScreen = () => {
   return (
     <>
       {habitsData.length > 0 ? (
-        <View className="flex-1 bg-gray-50 p-4">
+        <View className="flex-1 bg-gray-50 p-8 ">
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-3xl font-bold text-gray-800">
               Today's Habits
@@ -145,6 +156,7 @@ const HabbitsScreen = () => {
             renderItem={renderHabitCard}
             keyExtractor={item => item.id}
             showsVerticalScrollIndicator={false}
+            className="mt-8"
           />
         </View>
       ) : (
