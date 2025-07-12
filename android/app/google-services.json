@@ -12,7 +12,20 @@
           "package_name": "com.habitmind"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "687916973600-pe068vdf11rif87dt6jdc0haq9cpvqln.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.habitmind",
+            "certificate_hash": "b63f79ddfad182bd65a03288780d4faab2092da8"
+          }
+        },
+        {
+          "client_id": "687916973600-s7jq5qrg94fp62jp3ajraesr5vchvm53.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC8Ddlj9C9iOft2sQgIAmBUEhkqh4gl_Fw"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "687916973600-75jejpl0ge85f83tq11tsti638p3psq9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

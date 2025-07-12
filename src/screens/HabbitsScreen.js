@@ -8,19 +8,14 @@ import {
 } from 'react-native';
 import React, {useRef, useState} from 'react';
 import {useNavigation} from '@react-navigation/native';
-import AddHabitModal from './AddHabitModal';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 const HabbitsScreen = () => {
-  const navigation = useNavigation();
-  const [modalVisible, setModalVisible] = useState(false);
   const scale = useRef(new Animated.Value(1)).current;
-  const handleSaveHabit = habitData => {
-    console.log('Saved:', habitData);
-    setModalVisible(false);
-  };
+  const navigation = useNavigation()
   const habitsData = [
     {
+      id:1,
       name: 'Drink Water',
       description: 'Stay hydrated by drinking a glass of water.',
       time: '9:00 AM',
@@ -30,6 +25,7 @@ const HabbitsScreen = () => {
      
     },
     {
+      id:2,
       name: 'Morning Meditation',
       description: 'Start the day with 10 minutes of calm meditation.',
       time: '6:30 AM',
@@ -38,6 +34,7 @@ const HabbitsScreen = () => {
       isSelected: false,
     },
     {
+      id:3,
       name: 'Evening Walk',
       description: 'Take a short walk after dinner.',
       time: '7:00 PM',
@@ -46,6 +43,7 @@ const HabbitsScreen = () => {
       isSelected: true,
     },
     {
+      id:4,
       name: 'Read Book',
       description: 'Read at least 10 pages of any book.',
       time: '9:00 PM',
@@ -144,7 +142,7 @@ const HabbitsScreen = () => {
               Today's Habits
             </Text>
             <TouchableOpacity
-              onPress={() => setModalVisible(true)}
+              onPress={() => navigation.navigate('AddHabit')}
               className="bg-violet-400 px-4 py-2 rounded-md flex-row items-center space-x-1">
               <Icon name="add" size={16} color="#fff" />
               <Text className="text-white font-medium text-sm">New Habit</Text>
@@ -162,11 +160,7 @@ const HabbitsScreen = () => {
       ) : (
         noHabits()
       )}
-      <AddHabitModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSave={handleSaveHabit}
-      />
+     
     </>
   );
 };

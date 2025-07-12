@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   Switch,
-  Modal,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import {useNavigation} from '@react-navigation/native';
 
-const AddHabitModal =({ visible, onClose, onSave })=> {
+const AddHabitModal = () => {
+  const navigation = useNavigation();
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [time, setTime] = useState(new Date());
@@ -24,20 +28,20 @@ const AddHabitModal =({ visible, onClose, onSave })=> {
     setTime(currentTime);
   };
 
+  const handleSave = () => {
+    const habitData = {name, description, time, reminder};
+    console.log('Saved habit:', habitData);
+    navigation.goBack();
+  };
+
   return (
-    <Modal
-      animationType="fade"
-      visible={visible}
-      transparent
-      onRequestClose={onClose}
-    >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View className="flex-1 bg-black/30 justify-center items-center px-4">
         <View className="bg-white w-full rounded-xl p-6 shadow-md">
           {/* Close Button */}
           <TouchableOpacity
             className="absolute top-4 right-4"
-            onPress={onClose}
-          >
+            onPress={() => navigation.goBack()}>
             <Ionicons name="close" size={24} color="gray" />
           </TouchableOpacity>
 
@@ -72,8 +76,7 @@ const AddHabitModal =({ visible, onClose, onSave })=> {
           <Text className="text-sm font-medium mb-1">Time</Text>
           <TouchableOpacity
             onPress={() => setShowTimePicker(true)}
-            className="flex-row items-center border border-gray-200 rounded-lg px-4 py-2 mb-4"
-          >
+            className="flex-row items-center border border-gray-200 rounded-lg px-4 py-2 mb-4">
             <Text className="text-base mr-2">
               {time.toLocaleTimeString([], {
                 hour: '2-digit',
@@ -97,7 +100,7 @@ const AddHabitModal =({ visible, onClose, onSave })=> {
             <Switch
               value={reminder}
               onValueChange={setReminder}
-              trackColor={{ false: '#ccc', true: '#a78bfa' }} // purple-400
+              trackColor={{false: '#ccc', true: '#a78bfa'}} // purple-400
               thumbColor={reminder ? '#7c3aed' : '#f4f3f4'} // purple-600
             />
           </View>
@@ -105,15 +108,15 @@ const AddHabitModal =({ visible, onClose, onSave })=> {
           {/* Save Button */}
           <TouchableOpacity
             className="bg-violet-500 py-3 rounded-lg"
-            onPress={() => onSave({ name, description, time, reminder })}
-          >
+            onPress={handleSave}>
             <Text className="text-center text-white font-semibold">
               Save Habit
             </Text>
           </TouchableOpacity>
         </View>
       </View>
-    </Modal>
+    </TouchableWithoutFeedback>
   );
-}
+};
+
 export default AddHabitModal;

@@ -10,24 +10,19 @@ import AddHabitModal from './src/screens/AddHabitModal';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import SignInScreen from './src/screens/SignIn';
+import {GoogleSignin} from '@react-native-google-signin/google-signin';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function RootStack() {
-  return (
-    <Stack.Navigator
-      initialRouteName="Habbits"
-      screenOptions={{
-        headerStyle: {backgroundColor: 'tomato'},
-      }}>
-      <Stack.Screen name="AddHabit" component={AddHabitModal} />
-      <Stack.Screen name="Profile" component={ProfileScreen} />
-    </Stack.Navigator>
-  );
-}
-
 function BottomTabRootStack() {
+  React.useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        '687916973600-s7jq5qrg94fp62jp3ajraesr5vchvm53.apps.googleusercontent.com',
+      offlineAccess: true,
+    });
+  }, []);
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({
@@ -66,7 +61,11 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{headerShown: false}}>
-          <Stack.Screen name="Tabs" component={BottomTabRootStack} />
+          <Stack.Screen
+            name="Tabs"
+            options={{contentStyle: {backgroundColor: 'white'}}}
+            component={BottomTabRootStack}
+          />
           <Stack.Screen
             name="AddHabit"
             component={AddHabitModal}
