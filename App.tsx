@@ -6,11 +6,12 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import ProgressScreen from './src/screens/ProgressScreen';
 import HabbitsScreen from './src/screens/HabbitsScreen';
 import './global.css';
-import AddHabitModal from './src/screens/AddHabitModal';
+import AddHabitScreen from './src/screens/AddHabitScreen';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import SignInScreen from './src/screens/SignIn';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import HabitDetailScreen from './src/screens/HabitDetailScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -26,13 +27,21 @@ function BottomTabRootStack() {
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({
+        headerShown: true,
+        headerStyle: {
+          backgroundColor: '#FFF', // White header background
+        },
+        headerTintColor: '#7C3AED', // Violet color for back button and title
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
         tabBarStyle: {
           position: 'absolute',
           height: 60,
         },
+
         tabBarActiveTintColor: '#7C3AED', // violet-600
         tabBarInactiveTintColor: '#A1A1AA', // gray-400
-        headerShown: false,
         tabBarIcon: ({focused, color, size}) => {
           let iconName;
 
@@ -49,9 +58,21 @@ function BottomTabRootStack() {
           return <Ionicons name={iconName} size={24} color={color} />;
         },
       })}>
-      <Tab.Screen name="Habbits" component={HabbitsScreen} />
-      <Tab.Screen name="Progress" component={ProgressScreen} />
-      <Tab.Screen name="Sign In" component={SignInScreen} />
+      <Tab.Screen
+        name="Habbits"
+        component={HabbitsScreen}
+        options={{title: "Today's Habits"}}
+      />
+      <Tab.Screen
+        name="Progress"
+        component={ProgressScreen}
+        options={{title: 'Overall Progress'}}
+      />
+      <Tab.Screen
+        name="Sign In"
+        component={SignInScreen}
+        options={{title: 'Sign In'}}
+      />
       {/* <Tab.Screen name="Profile" component={ProfileScreen} /> */}
     </Tab.Navigator>
   );
@@ -60,16 +81,36 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator screenOptions={{headerShown: false}}>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: '#FFF', // White header background
+            },
+            // headerTintColor: '#7C3AED', // Violet color for back button and title
+            headerTitleStyle: {
+              fontWeight: 'bold',
+            },
+          }}>
           <Stack.Screen
             name="Tabs"
-            options={{contentStyle: {backgroundColor: 'white'}}}
+            options={{
+              headerShown: false,
+              contentStyle: {backgroundColor: 'white'},
+            }}
             component={BottomTabRootStack}
           />
           <Stack.Screen
             name="AddHabit"
-            component={AddHabitModal}
-            options={{presentation: 'modal'}}
+            component={AddHabitScreen}
+            options={{title: 'Add New Habit'}}
+          />
+          <Stack.Screen
+            name="HabitDetail"
+            component={HabitDetailScreen}
+            options={({route}) => ({
+              title: route.params?.habitName || 'Habit Details', // Dynamic title from params
+            })}
           />
         </Stack.Navigator>
       </NavigationContainer>
