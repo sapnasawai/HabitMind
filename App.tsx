@@ -1,22 +1,24 @@
 import * as React from 'react';
 import {NavigationContainer} from '@react-navigation/native';
-import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import ProfileScreen from './src/screens/ProfileScreen';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import ProgressScreen from './src/screens/ProgressScreen';
-import HabbitsScreen from './src/screens/HabbitsScreen';
 import './global.css';
-import AddHabitScreen from './src/screens/AddHabitScreen';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import SignInScreen from './src/screens/SignIn';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
-import HabitDetailScreen from './src/screens/HabitDetailScreen';
+import {getAuth, onAuthStateChanged} from '@react-native-firebase/auth';
+import AppNavigator from './AppNavigator';
+import SplashScreen from './src/screens/SplashScreen';
+import AuthNavigator from './AuthNavigator';
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
+export default function App() {
+  const [user, setUser] = React.useState(null);
+  const [initializing, setInitializing] = React.useState(true);
+  const [splashDurationComplete, setSplashDurationComplete] =
+    React.useState(false);
 
-function BottomTabRootStack() {
+  React.useEffect(() => {
+    const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
   React.useEffect(() => {
     GoogleSignin.configure({
       webClientId:
@@ -24,95 +26,39 @@ function BottomTabRootStack() {
       offlineAccess: true,
     });
   }, []);
-  return (
-    <Tab.Navigator
-      screenOptions={({route}) => ({
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: '#FFF', // White header background
-        },
-        headerTintColor: '#7C3AED', // Violet color for back button and title
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
-        tabBarStyle: {
-          position: 'absolute',
-          height: 60,
-        },
 
-        tabBarActiveTintColor: '#7C3AED', // violet-600
-        tabBarInactiveTintColor: '#A1A1AA', // gray-400
-        tabBarIcon: ({focused, color, size}) => {
-          let iconName;
+  function handleAuthStateChanged(user) {
+    console.log('user--->', user);
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }
+  const isAuthenticatedAndVerified = user => {
+    return user !== null && user !== undefined && user.emailVerified;
+  };
 
-          if (route.name === 'Habbits') {
-            iconName = focused ? 'list-circle' : 'list-circle-outline';
-          } else if (route.name === 'Progress') {
-            iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person-circle' : 'person-circle-outline';
-          } else if (route.name === 'Sign In') {
-            iconName = focused ? 'person-circle' : 'person-circle-outline';
-          }
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setSplashDurationComplete(true);
+    }, 3000); // 5000 milliseconds = 5 seconds
 
-          return <Ionicons name={iconName} size={24} color={color} />;
-        },
-      })}>
-      <Tab.Screen
-        name="Habbits"
-        component={HabbitsScreen}
-        options={{title: "Today's Habits"}}
-      />
-      <Tab.Screen
-        name="Progress"
-        component={ProgressScreen}
-        options={{title: 'Overall Progress'}}
-      />
-      <Tab.Screen
-        name="Sign In"
-        component={SignInScreen}
-        options={{title: 'Sign In'}}
-      />
-      {/* <Tab.Screen name="Profile" component={ProfileScreen} /> */}
-    </Tab.Navigator>
-  );
-}
-export default function App() {
+    // Clear the timeout if the component unmounts
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (initializing || !splashDurationComplete) {
+    return <SplashScreen />;
+  }
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: true,
-            headerStyle: {
-              backgroundColor: '#FFF', // White header background
-            },
-            // headerTintColor: '#7C3AED', // Violet color for back button and title
-            headerTitleStyle: {
-              fontWeight: 'bold',
-            },
-          }}>
-          <Stack.Screen
-            name="Tabs"
-            options={{
-              headerShown: false,
-              contentStyle: {backgroundColor: 'white'},
-            }}
-            component={BottomTabRootStack}
-          />
-          <Stack.Screen
-            name="AddHabit"
-            component={AddHabitScreen}
-            options={{title: 'Add New Habit'}}
-          />
-          <Stack.Screen
-            name="HabitDetail"
-            component={HabitDetailScreen}
-            options={({route}) => ({
-              title: route.params?.habitName || 'Habit Details', // Dynamic title from params
-            })}
-          />
-        </Stack.Navigator>
+        {isAuthenticatedAndVerified(user) ? (
+          // User is authenticated and email is verified
+          <AppNavigator  user= {user}/>
+        ) : (
+          // No user, or user not verified
+          <AuthNavigator />
+        )}
       </NavigationContainer>
     </SafeAreaProvider>
   );
