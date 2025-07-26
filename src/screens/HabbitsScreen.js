@@ -11,6 +11,7 @@ import {
 import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {isSameDay, format} from 'date-fns';
+import firestore from '@react-native-firebase/firestore';
 
 // --- SIMULATED DATA ---
 // In a real app, this data would come from Firestore and be managed by Redux/Context
@@ -107,6 +108,21 @@ const HabbitsScreen = () => {
     setHabits(updatedHabits);
   }, [ALL_COMPLETIONS_DATA_SIMULATED]); // Re-run when simulated completions change
 
+  useEffect(() => {
+    getData();
+  }, []);
+  const getData = async () => {
+    try {
+      const data = await firestore()
+        .collection('Users')
+        .doc('nlpmCx551uv2R5Z1WwUq')
+        .get();
+      console.log('data========',data._data)
+      return data;
+    } catch (e) {
+      console.log('e', e);
+    }
+  };
   // Function to toggle habit completion
   const toggleHabitCompletion = habitId => {
     const today = new Date();

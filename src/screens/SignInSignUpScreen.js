@@ -10,9 +10,12 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Button,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import auth from '@react-native-firebase/auth';
+import { GoogleSignin, isErrorWithCode, isSuccessResponse, statusCodes } from '@react-native-google-signin/google-signin';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 const SignInSignUpScreen = () => {
   const navigation = useNavigation();
@@ -23,6 +26,9 @@ const SignInSignUpScreen = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [user, setUser] = useState(null); // To store the authenticated user
+  const [mobile, setMobile] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [confirm, setConfirm] = useState('');
 
   // Effect to listen for authentication state changes
   useEffect(() => {
@@ -336,7 +342,85 @@ const SignInSignUpScreen = () => {
     );
   }
 
-  // Render the appropriate form if no user is signed in or email is not verified
+  const sendOtp = async () => {
+    try {
+      const mobileNo = '+91' + mobile;
+      const resp = await auth().signInWithPhoneNumber(mobileNo);
+      setConfirm(resp);
+      console.log('resp', resp);
+      Alert.alert('otp sent please verify');
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const verfiyOptp = async () => {
+    try {
+      const response = await confirm.confirm(otpInput);
+      console.log('respinse-', response);
+      Alert.alert('otp verified');
+    } catch (err) {}
+  };
+  const mobileverification = () => {
+    return (
+      <View className="flex-1 justify-center align-middle">
+        <TextInput
+          placeholder="Phone"
+          className="border w-80 mb-5"
+          onChangeText={val => setMobile(val)}
+        />
+        <Button title="Send OTP" onPress={() => sendOtp()} />
+        <TextInput
+          placeholder="Phone"
+          className="border w-80 mt-20"
+          onChangeText={val => setOtpInput(val)}
+        />
+        <Button title="Send OTP" onPress={() => verfiyOptp()} />
+      </View>
+    );
+  };
+  const signIn = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      console.log('response', response);
+      if (isSuccessResponse(response)) {
+        setUser(response.data);
+        console.log('response.data---', response.data);
+      } else {
+        // sign in was cancelled by user
+      }
+    } catch (error) {
+      console.log('error', error);
+      if (isErrorWithCode(error)) {
+        switch (error.code) {
+          case statusCodes.IN_PROGRESS:
+            // operation (eg. sign in) already in progress
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            // Android only, play services not available or outdated
+            break;
+          default:
+          // some other error happened
+        }
+      } else {
+        // an error that's not related to google sign in occurred
+      }
+    }
+  };
+  const signInWithGoogle = () => {
+    return (
+      <TouchableOpacity
+        className="bg-violet-400 flex-row items-center justify-center py-3 rounded-xl mb-3"
+        onPress={() => signIn()}>
+        <Icon name="logo-google" size={18} color="white" className="mr-2" />
+        <Text className="text-white font-semibold text-base">
+          Sign in with Google
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <KeyboardAvoidingView
@@ -344,7 +428,11 @@ const SignInSignUpScreen = () => {
         className="flex-1 justify-center px-4">
         <ScrollView
           contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}>
+          {/*TODO : code for phone authentication commented as it needs billing account and giving and err BILLING_NOT_ENABLED  
+             {mobileverification()} */}
           {isSignInMode ? renderSignInForm() : renderSignUpForm()}
+          {/*TODO : signin with google hold for now in real device
+          {signInWithGoogle()} */}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
