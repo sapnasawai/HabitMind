@@ -12,7 +12,6 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 function BottomTabRootStack({user}) {
-    console.log('user--->2',user)
   return (
     <Tab.Navigator
       screenOptions={({route}) => ({
@@ -58,15 +57,12 @@ function BottomTabRootStack({user}) {
       <Tab.Screen
         name="Profile"
         component={props => <ProfileScreen {...props} user={user} />}
-        // component={ProfileScreen}
         options={{title: 'Profile'}}
       />
-      {/* <Tab.Screen name="Profile" component={ProfileScreen} /> */}
     </Tab.Navigator>
   );
 }
 const AppNavigator = ({user}) => {
-    console.log('user10---',user)
   return (
     <Stack.Navigator
       screenOptions={{

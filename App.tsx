@@ -28,7 +28,6 @@ export default function App() {
   }, []);
 
   function handleAuthStateChanged(user) {
-    console.log('user--->', user);
     setUser(user);
     if (initializing) setInitializing(false);
   }
