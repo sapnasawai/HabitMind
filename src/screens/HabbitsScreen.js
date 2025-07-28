@@ -12,6 +12,7 @@ import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {isSameDay, format} from 'date-fns';
 import firestore from '@react-native-firebase/firestore';
+import {getAllUserHabits} from '../../ReadData';
 
 // --- SIMULATED DATA ---
 // In a real app, this data would come from Firestore and be managed by Redux/Context
@@ -90,7 +91,7 @@ const HabbitsScreen = () => {
   const navigation = useNavigation();
   // Use state for habits to allow dynamic updates
   const [habits, setHabits] = useState(ALL_HABITS_DATA_SIMULATED);
-
+  const [habitData, setHabitData] = useState('')
   // Function to check if a habit was completed today
   const isHabitCompletedToday = habitId => {
     const today = new Date();
@@ -111,13 +112,26 @@ const HabbitsScreen = () => {
   useEffect(() => {
     getData();
   }, []);
+  useEffect(() => {
+    const getHabitData = async () => {
+      try {
+        const result = await getAllUserHabits(); // call your async helper
+        console.log('result---',result)
+        setHabitData(result); // store the data in state
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    getHabitData(); // call the inner async function
+  }, []);
   const getData = async () => {
     try {
       const data = await firestore()
-        .collection('Users')
-        .doc('nlpmCx551uv2R5Z1WwUq')
+        .collection('users')
+        .doc('Fml5VwQ7NxTrThBIEUOb8yUdBHF3')
         .get();
-      console.log('data========',data._data)
+      console.log('data========', data);
       return data;
     } catch (e) {
       console.log('e', e);

@@ -14,8 +14,14 @@ import {
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import auth from '@react-native-firebase/auth';
-import { GoogleSignin, isErrorWithCode, isSuccessResponse, statusCodes } from '@react-native-google-signin/google-signin';
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  isSuccessResponse,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import Icon from 'react-native-vector-icons/Ionicons';
+import {createUserProfile} from '../../WriteData';
 
 const SignInSignUpScreen = () => {
   const navigation = useNavigation();
@@ -34,22 +40,22 @@ const SignInSignUpScreen = () => {
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged(userState => {
       setUser(userState);
-      // If a user is signed in and their email is verified, navigate away from this screen.
-      // You might want to navigate to a home screen or dashboard.
       if (userState && userState.emailVerified) {
         console.log('User is signed in and email verified:', userState.email);
-        // Example: Navigate to 'HomeScreen' if you have one defined in your navigator
-        // navigation.replace('HomeScreen');
       } else if (userState && !userState.emailVerified && !isSignInMode) {
-        // If a user just signed up and email is not verified, keep them on this screen
-        // or guide them to check their email.
         console.log('User signed up but email not verified:', userState.email);
       }
     });
-    return subscriber; // Unsubscribe on unmount
-  }, [isSignInMode, navigation]);
+    return subscriber;
+  }, [isSignInMode]);
+
+  const displayError = message => {
+    setErrorMessage(message);
+    Alert.alert('Error', message); // Use Alert for critical errors
+  };
 
   const handleAuth = async () => {
+    console.log('sapna handleAuth');
     setLoading(true);
     setErrorMessage('');
 
@@ -61,7 +67,13 @@ const SignInSignUpScreen = () => {
           password,
         );
         const currentUser = userCredential.user;
-
+        console.log('currentUser====',currentUser)
+       
+        await createUserProfile(
+          currentUser.displayName,
+          currentUser.email,
+          currentUser.photoURL
+        );
         if (currentUser && !currentUser.emailVerified) {
           Alert.alert(
             'Email Not Verified',
@@ -77,20 +89,14 @@ const SignInSignUpScreen = () => {
               },
             ],
           );
-          // If email is not verified, sign them out to prevent access to protected routes
-          // until verification. You might adjust this based on your app's flow.
           await auth().signOut();
         } else if (currentUser && currentUser.emailVerified) {
           Alert.alert('Success', 'Signed in successfully!');
-          // Navigation will be handled by the onAuthStateChanged listener in App.js
-          // Or you can navigate directly here if you prefer immediate navigation
-          // navigation.replace('HomeScreen');
         }
       } else {
         // --- Sign Up Logic ---
         if (!name.trim()) {
-          setErrorMessage('Please enter your name.');
-          setLoading(false);
+          displayError('Please enter your name.');
           return;
         }
         const userCredential = await auth().createUserWithEmailAndPassword(
@@ -106,7 +112,11 @@ const SignInSignUpScreen = () => {
 
         // Send email verification
         await sendVerificationEmail(newUser);
-
+        await createUserProfile(
+          newUser.uid,
+          newUser.displayName,
+          newUser.email,
+        );
         Alert.alert(
           'Account Created & Verification Sent',
           'Your account has been created! A verification email has been sent to your email address. Please check your inbox (and spam folder) to verify your account. You will be signed out momentarily to allow verification.',
@@ -171,6 +181,7 @@ const SignInSignUpScreen = () => {
   };
 
   const signOutUser = async () => {
+    setLoading(true);
     try {
       await auth().signOut();
       setUser(null); // Clear the user state
@@ -178,6 +189,8 @@ const SignInSignUpScreen = () => {
     } catch (error) {
       console.error('Error signing out:', error);
       Alert.alert('Error', 'Failed to sign out. Please try again.');
+    } finally {
+      setLoading(false); // Ensure loader is turned off
     }
   };
 
@@ -321,9 +334,6 @@ const SignInSignUpScreen = () => {
     </View>
   );
 
-  // If a user is signed in and verified, you could show a different view
-  // or simply navigate them away from this screen via the useEffect.
-  // For demonstration, let's show a "Signed In" message.
   if (user && user.emailVerified) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
@@ -343,6 +353,8 @@ const SignInSignUpScreen = () => {
   }
 
   const sendOtp = async () => {
+    setLoading(true); // Start loader for OTP
+    setErrorMessage('');
     try {
       const mobileNo = '+91' + mobile;
       const resp = await auth().signInWithPhoneNumber(mobileNo);
@@ -350,62 +362,203 @@ const SignInSignUpScreen = () => {
       console.log('resp', resp);
       Alert.alert('otp sent please verify');
     } catch (err) {
-      console.log(err);
+      console.error('Error sending OTP:', err); // Log full error
+      let userFacingMessage = 'Failed to send OTP. Please try again.';
+      if (err.code === 'auth/invalid-phone-number') {
+        userFacingMessage = 'The phone number provided is invalid.';
+      } else if (err.code === 'auth/too-many-requests') {
+        userFacingMessage = 'Too many requests. Please try again later.';
+      } else if (err.code === 'auth/billing-not-enabled') {
+        userFacingMessage =
+          'Phone authentication requires billing to be enabled in Firebase.';
+      } else if (err.code === 'auth/network-request-failed') {
+        userFacingMessage =
+          'Network error. Please check your internet connection.';
+      }
+      displayError(userFacingMessage);
+    } finally {
+      setLoading(false); // Ensure loader is turned off
     }
   };
 
   const verfiyOptp = async () => {
+    setLoading(true); // Start loader for OTP verification
+    setErrorMessage('');
     try {
+      if (!confirm) {
+        displayError('No OTP request initiated. Please send OTP first.');
+        return;
+      }
       const response = await confirm.confirm(otpInput);
-      console.log('respinse-', response);
-      Alert.alert('otp verified');
-    } catch (err) {}
+      console.log('response-', response);
+      Alert.alert(
+        'OTP Verified',
+        'Your phone number has been successfully verified!',
+      );
+      // After successful phone verification, you might want to create a user profile
+      // in Firestore similar to email/password signup if this is a new user.
+      if (response.user) {
+        await createUserProfile(
+          response.user.uid,
+          response.user.displayName || 'Phone User',
+          response.user.email || null,
+        );
+      }
+      // App.js's onAuthStateChanged listener will handle navigation
+    } catch (err) {
+      console.error('Error verifying OTP:', err); // Log full error
+      let userFacingMessage = 'Failed to verify OTP. Please try again.';
+      if (err.code === 'auth/invalid-verification-code') {
+        userFacingMessage = 'The verification code entered is invalid.';
+      } else if (err.code === 'auth/code-expired') {
+        userFacingMessage =
+          'The verification code has expired. Please resend OTP.';
+      } else if (err.code === 'auth/network-request-failed') {
+        userFacingMessage =
+          'Network error. Please check your internet connection.';
+      }
+      displayError(userFacingMessage);
+    } finally {
+      setLoading(false); // Ensure loader is turned off
+    }
   };
+
   const mobileverification = () => {
     return (
-      <View className="flex-1 justify-center align-middle">
+      <View className="flex-1 justify-center items-center p-6">
+        <Text className="text-2xl font-bold text-gray-800 mb-4">
+          Verify with Phone Number
+        </Text>
+        <Text className="text-sm text-gray-500 text-center mb-6">
+          Enter your mobile number to receive an OTP.
+        </Text>
+        {errorMessage ? (
+          <Text className="text-center text-red-500 mb-4">{errorMessage}</Text>
+        ) : null}
         <TextInput
-          placeholder="Phone"
-          className="border w-80 mb-5"
+          placeholder="e.g., 9876543210"
+          placeholderTextColor="#A0AEC0"
+          className="border border-purple-400 rounded-lg px-4 py-3 mb-4 text-gray-800 text-base w-full max-w-md"
           onChangeText={val => setMobile(val)}
+          keyboardType="phone-pad"
+          autoCapitalize="none"
+          maxLength={10} // Assuming 10-digit Indian mobile numbers
         />
-        <Button title="Send OTP" onPress={() => sendOtp()} />
-        <TextInput
-          placeholder="Phone"
-          className="border w-80 mt-20"
-          onChangeText={val => setOtpInput(val)}
-        />
-        <Button title="Send OTP" onPress={() => verfiyOptp()} />
+        <TouchableOpacity
+          className="bg-violet-500 py-3 rounded-lg shadow-md flex-row items-center justify-center w-full max-w-md mb-4"
+          onPress={sendOtp}
+          disabled={loading}>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text className="text-center text-white font-semibold text-lg">
+              Send OTP
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        {confirm ? ( // Only show OTP input if OTP has been sent
+          <>
+            <Text className="text-sm font-medium mb-1 text-gray-700 mt-6">
+              Enter OTP
+            </Text>
+            <TextInput
+              placeholder="••••••"
+              placeholderTextColor="#A0AEC0"
+              className="border border-purple-400 rounded-lg px-4 py-3 mb-4 text-gray-800 text-base w-full max-w-md"
+              onChangeText={val => setOtpInput(val)}
+              keyboardType="number-pad"
+              maxLength={6} // Assuming 6-digit OTP
+            />
+            <TouchableOpacity
+              className="bg-violet-500 py-3 rounded-lg shadow-md flex-row items-center justify-center w-full max-w-md"
+              onPress={verfiyOptp}
+              disabled={loading}>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-center text-white font-semibold text-lg">
+                  Verify OTP
+                </Text>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : null}
       </View>
     );
   };
   const signIn = async () => {
+    setLoading(true); // Start loader for Google Sign-In
+    setErrorMessage('');
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
-      console.log('response', response);
+      console.log('Google Sign-In response', response);
+
       if (isSuccessResponse(response)) {
-        setUser(response.data);
-        console.log('response.data---', response.data);
+        // Build Firebase credential with the Google ID token.
+        const googleCredential = auth.GoogleAuthProvider.credential(
+          response.idToken,
+        );
+
+        // Sign-in the user with the credential
+        const userCredential = await auth().signInWithCredential(
+          googleCredential,
+        );
+        const currentUser = userCredential.user;
+        // Create user profile in Firestore after successful Google sign-in
+        await createUserProfile(
+          currentUser.displayName,
+          currentUser.email,
+          currentUser.photoURL,
+        );
+
+        Alert.alert('Success', 'Signed in with Google successfully!');
+        // App.js's onAuthStateChanged listener will handle navigation
       } else {
-        // sign in was cancelled by user
+        // sign in was cancelled by user (e.g., they closed the Google prompt)
+        console.log('Google Sign-In cancelled by user.');
+        setErrorMessage('Google Sign-In cancelled.');
       }
     } catch (error) {
-      console.log('error', error);
+      console.error('Google Sign-In error:', error);
+      let userFacingMessage =
+        'An unexpected error occurred during Google Sign-In. Please try again.';
+
       if (isErrorWithCode(error)) {
         switch (error.code) {
           case statusCodes.IN_PROGRESS:
-            // operation (eg. sign in) already in progress
+            userFacingMessage = 'Google Sign-In is already in progress.';
             break;
           case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-            // Android only, play services not available or outdated
+            userFacingMessage =
+              'Google Play Services are not available or outdated.';
+            break;
+          case statusCodes.SIGN_IN_CANCELLED:
+            userFacingMessage = 'Google Sign-In was cancelled by the user.';
+            break;
+          case statusCodes.NETWORK_ERROR: // Specific Google Sign-In network error
+            userFacingMessage =
+              'Network error during Google Sign-In. Please check your internet connection.';
+            break;
+          case statusCodes.DEVELOPER_ERROR:
+            userFacingMessage =
+              'Developer error: Check your Google Sign-In configuration (webClientId).';
             break;
           default:
-          // some other error happened
+            userFacingMessage = `Google Sign-In error: ${
+              error.message || 'Unknown error.'
+            }`;
         }
-      } else {
-        // an error that's not related to google sign in occurred
+      } else if (error.code === 'auth/network-request-failed') {
+        // Firebase auth specific network error
+        userFacingMessage =
+          'Network error. Please check your internet connection.';
       }
+
+      displayError(userFacingMessage);
+    } finally {
+      setLoading(false); // Ensure loader is turned off
     }
   };
   const signInWithGoogle = () => {
