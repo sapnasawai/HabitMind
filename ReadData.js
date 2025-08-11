@@ -18,17 +18,14 @@ export const getAllUserHabits = async () => {
   if (!userId) {
     return [];
   }
-
   try {
     // Reference the 'habits' subcollection for the current user
     const habitsRef = firestore()
       .collection('users')
       .doc(userId)
       .collection('habits');
-
     // Fetch the documents
     const querySnapshot = await habitsRef.get();
-
     const habits = [];
     querySnapshot.forEach(documentSnapshot => {
       habits.push({
@@ -36,8 +33,6 @@ export const getAllUserHabits = async () => {
         ...documentSnapshot.data(),
       });
     });
-
-    console.log('Fetched all habits:', habits);
     return habits;
   } catch (error) {
     console.error('Error fetching all user habits:', error);
@@ -163,83 +158,3 @@ export const ICON_OPTIONS = [
   { name: 'money', label: 'Budget', family: 'FontAwesome' },
   { name: 'coffee', label: 'Coffee Break', family: 'FontAwesome' },
 ];
-// --- Example Usage in a React Native Component (e.g., your HomeScreen) ---
-/*
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, ActivityIndicator } from 'react-native';
-// Assuming you put the above functions in a file like 'src/services/firestoreReads.js'
-// import { getAllUserHabits, getSpecificUserHabit, subscribeToUserHabits } from '../services/firestoreReads';
-
-const HomeScreen = () => {
-  const [habits, setHabits] = useState([]);
-  const [loadingHabits, setLoadingHabits] = useState(true);
-  const [selectedHabit, setSelectedHabit] = useState(null);
-
-  useEffect(() => {
-    // Example 1: One-time fetch when component mounts
-    // const fetchHabits = async () => {
-    //   const fetchedHabits = await getAllUserHabits();
-    //   setHabits(fetchedHabits);
-    //   setLoadingHabits(false);
-    // };
-    // fetchHabits();
-
-    // Example 3: Real-time listener for habits (recommended for dynamic lists)
-    const unsubscribe = subscribeToUserHabits((updatedHabits) => {
-      setHabits(updatedHabits);
-      setLoadingHabits(false);
-    });
-
-    // Cleanup function: unsubscribe from real-time updates when component unmounts
-    return () => unsubscribe();
-  }, []); // Empty dependency array means this effect runs once on mount and cleans up on unmount
-
-  // Example of fetching a specific habit (e.g., when user taps on a habit in the list)
-  const handleHabitPress = async (habitId) => {
-    const habit = await getSpecificUserHabit(habitId);
-    setSelectedHabit(habit);
-    // You might navigate to a HabitDetailScreen here
-  };
-
-  if (loadingHabits) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Loading Habits...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <View style={{ flex: 1, padding: 20 }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>Your Habits</Text>
-      {habits.length === 0 ? (
-        <Text>No habits found. Start by adding a new one!</Text>
-      ) : (
-        <FlatList
-          data={habits}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => handleHabitPress(item.id)} style={{ padding: 15, borderBottomWidth: 1, borderBottomColor: '#ccc' }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold' }}>{item.name}</Text>
-              <Text style={{ fontSize: 14, color: '#666' }}>{item.description}</Text>
-            </TouchableOpacity>
-          )}
-        />
-      )}
-
-      {selectedHabit && (
-        <View style={{ marginTop: 20, borderWidth: 1, borderColor: 'blue', padding: 10 }}>
-          <Text style={{ fontWeight: 'bold' }}>Selected Habit:</Text>
-          <Text>Name: {selectedHabit.name}</Text>
-          <Text>Description: {selectedHabit.description}</Text>
-          <Text>Type: {selectedHabit.type}</Text>
-          { // You can display more details here }
-        </View>
-      )}
-    </View>
-  );
-};
-
-export default HomeScreen;
-*/

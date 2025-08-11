@@ -1,8 +1,8 @@
 // Import necessary Firebase modules
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth'; // For getting the current user's UID
-import { getCurrentUserId } from './ReadData';
-
+import {getCurrentUserId} from './ReadData';
+import {Alert} from 'react-native';
 
 export const createUserProfile = async (
   displayName,
@@ -25,6 +25,9 @@ export const createUserProfile = async (
           lastSignInTime: firestore.FieldValue.serverTimestamp(),
           totalXP: 0,
           level: 1,
+          currentGlobalStreak: 0,
+          bestGlobalStreak: 0,
+          lastGlobalCompletionDate: null,
           lastActive: firestore.FieldValue.serverTimestamp(),
           settings: {theme: 'light', notificationsEnabled: true},
           aiPreferences: {tone: 'neutral', dailyInsight: true},
@@ -51,7 +54,11 @@ export const addNewHabit = async habitData => {
       .collection('habits')
       .add({
         ...habitData, // Contains name, description, type, goal, unit, frequency, startDate, etc.
-        isActive: true, // New habits are active by default
+        isActive: true,
+        habitXP: 0,
+        bestStreak: 0,
+        currentStreak: 0,
+        lastCompletionDate: null,
         createdAt: firestore.FieldValue.serverTimestamp(),
         lastUpdated: firestore.FieldValue.serverTimestamp(),
       });
@@ -62,31 +69,168 @@ export const addNewHabit = async habitData => {
   }
 };
 
-// Example habitData structure for addNewHabit:
-/*
-const newHabitExample = {
-  name: "Read 30 mins",
-  description: "Read a book for 30 minutes every day.",
-  type: "counter", // or "daily", "weekly"
-  goal: 30,
-  unit: "minutes",
-  frequency: ["daily"],
-  startDate: firestore.Timestamp.now(), // Or a specific date
-  category: "Personal Growth",
-  icon: "book-outline",
-  color: "#FFD700",
+// --- NEW: Update an Existing Habit ---
+export const updateHabit = async (habitId, updatedData) => {
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+  try {
+    await firestore()
+      .collection('users')
+      .doc(userId)
+      .collection('habits')
+      .doc(habitId)
+      .update({
+        ...updatedData,
+        lastUpdated: firestore.FieldValue.serverTimestamp(), // Update last updated timestamp
+      });
+    console.log(`Habit ${habitId} updated successfully!`);
+    return true;
+  } catch (error) {
+    console.error(`Error updating habit ${habitId}:`, error);
+    Alert.alert('Error', 'Failed to update habit. Please try again.');
+    return false;
+  }
 };
-*/
 
-// --- 3. Log a Habit Completion ---
-// This would be called when a user marks a habit as complete on their HabbitsScreen.
-// Note: Updating `progressSummaries` (daily/monthly) should ideally be handled by
-// a Cloud Function triggered by `completions` writes to ensure consistency and prevent client-side manipulation.
-const logHabitCompletion = async (
+// --- NEW: Delete a Habit ---
+export const deleteHabit = async habitId => {
+  const userId = getCurrentUserId();
+  if (!userId) return null;
+  try {
+    // IMPORTANT: For production, consider using a Firebase Cloud Function
+    // to recursively delete subcollections (completions, reminders)
+    // when a habit is deleted, as client-side deletion of subcollections
+    // can be unreliable.
+
+    await firestore()
+      .collection('users')
+      .doc(userId)
+      .collection('habits')
+      .doc(habitId)
+      .delete();
+    console.log(`Habit ${habitId} deleted successfully!`);
+    return true;
+  } catch (error) {
+    console.error(`Error deleting habit ${habitId}:`, error);
+    Alert.alert('Error', 'Failed to delete habit. Please try again.');
+    return false;
+  }
+};
+
+export const logHabitCompletion = async (
   habitId,
+  date,
   value = 1,
   notes = '',
-  xpEarned = 0,
+  xpEarned = 10,
+) => {
+  const userId = getCurrentUserId();
+  if (!userId) return;
+
+  try {
+    // Normalize date
+    const normalizedDate = new Date(date);
+    normalizedDate.setHours(0, 0, 0, 0);
+
+    const habitRef = firestore()
+      .collection('users')
+      .doc(userId)
+      .collection('habits')
+      .doc(habitId);
+
+    const userRef = firestore().collection('users').doc(userId);
+
+    // Add completion record
+    await habitRef.collection('completions').add({
+      date: firestore.Timestamp.fromDate(normalizedDate),
+      value,
+      isSkipped: false,
+      notes,
+      xpEarned,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Fetch habit data
+    const habitSnap = await habitRef.get();
+    const habitData = habitSnap.data();
+
+    // --- PER HABIT STREAK CALC ---
+    let newCurrentStreak = habitData?.currentStreak || 0;
+    let bestStreak = habitData?.bestStreak || 0;
+    let lastCompletionDate = habitData?.lastCompletionDate?.toDate?.() || null;
+
+    if (!lastCompletionDate) {
+      newCurrentStreak = 1;
+    } else {
+      const diffDays = Math.floor(
+        (normalizedDate - lastCompletionDate) / (1000 * 60 * 60 * 24),
+      );
+      if (diffDays === 1) {
+        newCurrentStreak += 1;
+      } else if (diffDays > 1) {
+        newCurrentStreak = 1; // reset
+      }
+    }
+
+    bestStreak = Math.max(bestStreak, newCurrentStreak);
+
+    // Update habit XP + streaks
+    await habitRef.update({
+      habitXP: firestore.FieldValue.increment(xpEarned),
+      currentStreak: newCurrentStreak,
+      bestStreak,
+      lastCompletionDate: firestore.Timestamp.fromDate(normalizedDate),
+      lastUpdated: firestore.FieldValue.serverTimestamp(),
+    });
+
+    // --- GLOBAL STREAK CALC ---
+    const userSnap = await userRef.get();
+    const userData = userSnap.data();
+    let globalCurrentStreak = userData?.currentGlobalStreak || 0;
+    let bestGlobalStreak = userData?.bestGlobalStreak || 0;
+    let lastGlobalCompletionDate =
+      userData?.lastGlobalCompletionDate?.toDate?.() || null;
+
+    if (!lastGlobalCompletionDate) {
+      globalCurrentStreak = 1;
+    } else {
+      const diffDays = Math.floor(
+        (normalizedDate - lastGlobalCompletionDate) / (1000 * 60 * 60 * 24),
+      );
+      if (diffDays === 1) {
+        globalCurrentStreak += 1;
+      } else if (diffDays > 1) {
+        globalCurrentStreak = 1;
+      }
+    }
+
+    bestGlobalStreak = Math.max(bestGlobalStreak, globalCurrentStreak);
+
+    // Update total XP, level, global streaks
+    const newTotalXP = (userData?.totalXP || 0) + xpEarned;
+    const newLevel = Math.floor(newTotalXP / 500) + 1;
+
+    await userRef.update({
+      totalXP: firestore.FieldValue.increment(xpEarned),
+      level: newLevel,
+      currentGlobalStreak: globalCurrentStreak,
+      bestGlobalStreak,
+      lastGlobalCompletionDate: firestore.Timestamp.fromDate(normalizedDate),
+    });
+
+    console.log(
+      `Completion logged for habit ${habitId}. Habit streak: ${newCurrentStreak}, Global streak: ${globalCurrentStreak}`,
+    );
+  } catch (error) {
+    console.error('Error logging habit completion:', error);
+    Alert.alert('Error', 'Failed to log habit completion.');
+  }
+};
+
+export const deleteCompletionFromFirestore = async (
+  habitId,
+  completionId,
+  xpEarned = 10,
 ) => {
   const userId = getCurrentUserId();
   if (!userId) return;
@@ -98,265 +242,17 @@ const logHabitCompletion = async (
       .collection('habits')
       .doc(habitId)
       .collection('completions')
-      .add({
-        date: firestore.Timestamp.fromDate(new Date()), // Date of completion (start of the day is often preferred)
-        value: value,
-        isSkipped: false,
-        notes: notes,
-        xpEarned: xpEarned,
-        createdAt: firestore.FieldValue.serverTimestamp(),
-      });
-    console.log(`Completion logged for habit ${habitId}`);
+      .doc(completionId) // Directly target the document by its ID
+      .delete();
+    console.log(`Completion with ID ${completionId} deleted.`);
 
-    // Optionally, update user's total XP directly from client (less robust than Cloud Function)
     await firestore()
       .collection('users')
       .doc(userId)
       .update({
-        totalXP: firestore.FieldValue.increment(xpEarned),
-        // You'd also need logic to update 'level' based on XP in your app or a Cloud Function
+        totalXP: firestore.FieldValue.increment(-xpEarned),
       });
   } catch (error) {
-    console.error('Error logging habit completion:', error);
+    console.error('Error deleting habit completion:', error);
   }
 };
-
-// --- 4. Add a Reminder for a Habit ---
-// Called from habit detail/edit screen.
-const addHabitReminder = async (habitId, time, days, message) => {
-  const userId = getCurrentUserId();
-  if (!userId) return;
-
-  try {
-    await firestore()
-      .collection('users')
-      .doc(userId)
-      .collection('habits')
-      .doc(habitId)
-      .collection('reminders')
-      .add({
-        time: time, // e.g., "08:00"
-        days: days, // e.g., ["Monday", "Wednesday", "Friday"]
-        message: message,
-        isEnabled: true,
-        createdAt: firestore.FieldValue.serverTimestamp(),
-      });
-    console.log('Reminder added successfully!');
-  } catch (error) {
-    console.error('Error adding reminder:', error);
-  }
-};
-
-// --- 5. Send an AI Chat Message ---
-// Called from your AI Chat screen.
-const sendAIChatMessage = async (message, sender = 'user', context = {}) => {
-  const userId = getCurrentUserId();
-  if (!userId) return;
-
-  try {
-    await firestore()
-      .collection('users')
-      .doc(userId)
-      .collection('aiChatHistory')
-      .add({
-        sender: sender,
-        message: message,
-        timestamp: firestore.FieldValue.serverTimestamp(),
-        context: context, // Store any relevant AI context for continuity
-      });
-    console.log('AI chat message sent!');
-  } catch (error) {
-    console.error('Error sending AI chat message:', error);
-  }
-};
-
-// --- 6. Earn a Badge ---
-// This would typically be triggered by a Cloud Function when a user meets badge criteria,
-// but for client-side testing or simple badges, you could add it directly.
-const earnBadge = async (badgeId, name, description, imageUrl) => {
-  const userId = getCurrentUserId();
-  if (!userId) return;
-
-  try {
-    // Using setDoc to ensure each badgeId is unique per user, and it won't create duplicates
-    await firestore()
-      .collection('users')
-      .doc(userId)
-      .collection('badges')
-      .doc(badgeId) // Use badgeId as document ID for easy lookup
-      .set({
-        name: name,
-        description: description,
-        imageUrl: imageUrl,
-        earnedAt: firestore.FieldValue.serverTimestamp(),
-        // progress: { currentValue: 0, targetValue: 0 } // For multi-stage badges, if applicable
-      });
-    console.log(`Badge '${name}' earned by user ${userId}!`);
-  } catch (error) {
-    console.error('Error earning badge:', error);
-  }
-};
-
-// --- 7. Join a Challenge ---
-// Called when a user joins a challenge from a challenges list.
-const joinChallenge = async challengeData => {
-  const userId = getCurrentUserId();
-  if (!userId) return;
-
-  try {
-    // The challengeId here would likely come from a globalChallenges document
-    await firestore()
-      .collection('users')
-      .doc(userId)
-      .collection('challenges')
-      .doc(challengeData.challengeId) // Use the global challenge ID as the document ID
-      .set({
-        name: challengeData.name,
-        description: challengeData.description,
-        startDate: challengeData.startDate,
-        endDate: challengeData.endDate,
-        progress: 0, // Initial progress
-        status: 'active',
-        reward: challengeData.reward,
-        habitsInChallenge: challengeData.habitsInChallenge, // Array of habit IDs related to this challenge
-        lastUpdated: firestore.FieldValue.serverTimestamp(),
-      });
-
-    // Optionally, update the global challenge's participatingUsersCount
-    await firestore()
-      .collection('globalChallenges')
-      .doc(challengeData.challengeId)
-      .update({
-        participatingUsersCount: firestore.FieldValue.increment(1),
-      });
-
-    console.log(`User ${userId} joined challenge ${challengeData.name}!`);
-  } catch (error) {
-    console.error('Error joining challenge:', error);
-  }
-};
-
-const acceptFriendRequest = async friendUserId => {
-  const currentUserId = getCurrentUserId();
-  if (!currentUserId) return;
-
-  try {
-    // Update status in current user's friends subcollection
-    await firestore()
-      .collection('users')
-      .doc(currentUserId)
-      .collection('friends')
-      .doc(friendUserId)
-      .update({
-        status: 'accepted',
-        acceptedAt: firestore.FieldValue.serverTimestamp(),
-      });
-
-    // Update status in friend's friends subcollection (reciprocal)
-    await firestore()
-      .collection('users')
-      .doc(friendUserId)
-      .collection('friends')
-      .doc(currentUserId)
-      .update({
-        status: 'accepted',
-        acceptedAt: firestore.FieldValue.serverTimestamp(),
-      });
-
-    // Add a notification for the friend who sent the request
-    await addNotification(
-      friendUserId,
-      'friend_accepted',
-      `${auth().currentUser.displayName} accepted your friend request!`,
-      currentUserId,
-      'friend',
-    );
-
-    console.log(
-      `Friend request accepted between ${currentUserId} and ${friendUserId}`,
-    );
-  } catch (error) {
-    console.error('Error accepting friend request:', error);
-  }
-};
-
-// --- 9. Add a Notification for a User ---
-// This can be called from various parts of your app or from Cloud Functions.
-const addNotification = async (
-  targetUserId,
-  type,
-  message,
-  relatedEntityId = null,
-  relatedEntityType = null,
-) => {
-  try {
-    await firestore()
-      .collection('users')
-      .doc(targetUserId)
-      .collection('notifications')
-      .add({
-        type: type,
-        message: message,
-        timestamp: firestore.FieldValue.serverTimestamp(),
-        isRead: false,
-        relatedEntityId: relatedEntityId,
-        relatedEntityType: relatedEntityType,
-      });
-    console.log(`Notification added for user ${targetUserId}`);
-  } catch (error) {
-    console.error('Error adding notification:', error);
-  }
-};
-
-// --- Example of a Cloud Function Trigger (Conceptual, not client-side code) ---
-/*
-// This is conceptual code for a Firebase Cloud Function, not for your React Native app.
-// It demonstrates how `progressSummaries` would be updated automatically.
-
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-admin.initializeApp();
-
-exports.updateDailyProgressOnCompletion = functions.firestore
-  .document('users/{userId}/habits/{habitId}/completions/{completionId}')
-  .onCreate(async (snap, context) => {
-    const { userId, habitId } = context.params;
-    const completionData = snap.data();
-    const completionDate = completionData.date.toDate(); // Convert Timestamp to Date
-    const dateString = completionDate.toISOString().split('T')[0]; // YYYY-MM-DD
-
-    const userRef = admin.firestore().collection('users').doc(userId);
-    const dailyProgressRef = userRef.collection('progressSummaries').doc('daily').collection(dateString).doc('summary'); // Or just doc(dateString) if summary is the only doc
-
-    // Get the habit details to know if it's a "total" habit or simple check
-    const habitRef = userRef.collection('habits').doc(habitId);
-    const habitSnap = await habitRef.get();
-    const habitData = habitSnap.data();
-
-    // Atomically update daily summary
-    await dailyProgressRef.set({
-      totalHabits: admin.firestore.FieldValue.increment(0), // Adjust if you track total habits *defined* for the day
-      completedHabits: admin.firestore.FieldValue.increment(completionData.isSkipped ? 0 : 1),
-      totalXP: admin.firestore.FieldValue.increment(completionData.xpEarned),
-      [`habitsCompleted.${habitId}`]: !completionData.isSkipped, // Set true/false for specific habit
-      lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-      // Streak logic would be more complex, potentially needing a separate function or more advanced aggregation
-    }, { merge: true });
-
-    // Update monthly summary similarly
-    const monthString = dateString.substring(0, 7); // YYYY-MM
-    const monthlyProgressRef = userRef.collection('progressSummaries').doc('monthly').collection(monthString).doc('summary');
-
-    await monthlyProgressRef.set({
-      totalHabitsCompleted: admin.firestore.FieldValue.increment(completionData.isSkipped ? 0 : 1),
-      totalXP: admin.firestore.FieldValue.increment(completionData.xpEarned),
-      completionRate: admin.firestore.FieldValue.increment(0), // This would need more complex calculation
-      lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
-      [`habitBreakdown.${habitId}.completed`]: admin.firestore.FieldValue.increment(completionData.isSkipped ? 0 : 1),
-      [`habitBreakdown.${habitId}.total`]: admin.firestore.FieldValue.increment(1), // Assuming each completion attempt adds to total
-    }, { merge: true });
-
-    console.log(`Daily and Monthly progress updated for user ${userId} on ${dateString}`);
-    return null;
-  });
-*/

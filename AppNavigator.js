@@ -96,6 +96,11 @@ const AppNavigator = ({user}) => {
           title: route.params?.habitName || 'Habit Details', // Dynamic title from params
         })}
       />
+      <Stack.Screen
+        name="Habbits"
+        component={HabbitsScreen}
+        options={{title: "Today's Habits"}}
+      />
     </Stack.Navigator>
   );
 };

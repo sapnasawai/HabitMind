@@ -1,4 +1,4 @@
-import React, {useRef, useState, useEffect} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {
   View,
   Text,
@@ -6,182 +6,161 @@ import {
   Pressable,
   FlatList,
   Animated,
-  Alert, // Using Alert for simple messages, will replace with custom modal later if needed
+  Alert,
+  ActivityIndicator, // Added for loading indicator
+  SafeAreaView, // Added for proper layout
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons';
-import {isSameDay, format} from 'date-fns';
-import firestore from '@react-native-firebase/firestore';
-import {getAllUserHabits} from '../../ReadData';
-
-// --- SIMULATED DATA ---
-// In a real app, this data would come from Firestore and be managed by Redux/Context
-// We'll use a local state for habitsData for demonstration purposes,
-// and simulate completion updates.
-export const ALL_HABITS_DATA_SIMULATED = [
-  // Use let to allow modification
-  {
-    id: 'habit1',
-    name: 'Drink Water',
-    description: 'Stay hydrated by drinking a glass of water.',
-    time: '9:00 AM', // This should ideally be a Date object for consistency
-    icon: 'water-outline',
-    reminder: true,
-    frequency: 'daily',
-    creationDate: new Date(2025, 6, 1), // July 1st, 2025
-  },
-  {
-    id: 'habit2',
-    name: 'Morning Meditation',
-    description: 'Start the day with 10 minutes of calm meditation.',
-    time: '6:30 AM',
-    icon: 'leaf-outline',
-    reminder: true,
-    frequency: 'daily',
-    creationDate: new Date(2025, 5, 15), // June 15th, 2025
-  },
-  {
-    id: 'habit3',
-    name: 'Evening Walk',
-    description: 'Take a short walk after dinner.',
-    time: '7:00 PM',
-    icon: 'walk-outline',
-    reminder: false,
-    frequency: 'daily',
-    creationDate: new Date(2025, 6, 5), // July 5th, 2025
-  },
-  {
-    id: 'habit4',
-    name: 'Read Book',
-    description: 'Read at least 10 pages of any book.',
-    time: '9:00 PM',
-    icon: 'book-outline',
-    reminder: true,
-    frequency: 'specificDays', // Mon, Wed, Fri
-    specificDays: [1, 3, 5], // 0=Sun, 1=Mon, ..., 6=Sat
-    creationDate: new Date(2025, 6, 1),
-  },
-];
-
-// Simulated completion data for ALL habits (will be updated)
-export const ALL_COMPLETIONS_DATA_SIMULATED = [
-  // Habit 1: Drink Water
-  {habitId: 'habit1', completedAt: new Date(2025, 6, 7, 8, 0)},
-  {habitId: 'habit1', completedAt: new Date(2025, 6, 8, 8, 15)},
-  {habitId: 'habit1', completedAt: new Date(2025, 6, 10, 8, 30)},
-  {habitId: 'habit1', completedAt: new Date(2025, 6, 11, 8, 0)}, // Yesterday
-  {habitId: 'habit1', completedAt: new Date(2025, 6, 12, 8, 0)}, // Today
-
-  // Habit 2: Meditate
-  {habitId: 'habit2', completedAt: new Date(2025, 6, 9, 7, 0)},
-  {habitId: 'habit2', completedAt: new Date(2025, 6, 10, 7, 10)},
-  {habitId: 'habit2', completedAt: new Date(2025, 6, 11, 7, 0)}, // Yesterday
-
-  // Habit 3: Read Book (started recently)
-  {habitId: 'habit3', completedAt: new Date(2025, 6, 8, 20, 0)},
-  {habitId: 'habit3', completedAt: new Date(2025, 6, 12, 20, 0)}, // Today
-
-  // Habit 4: Exercise (Mon, Wed, Fri)
-  {habitId: 'habit4', completedAt: new Date(2025, 6, 7, 17, 0)}, // Monday
-  {habitId: 'habit4', completedAt: new Date(2025, 6, 9, 17, 30)}, // Wednesday
-  {habitId: 'habit4', completedAt: new Date(2025, 6, 11, 17, 0)}, // Friday (Yesterday)
-];
+import {
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons'; // Assuming Ionicons is the primary icon set
+// import {isSameDay, format} from 'date-fns'; // Not directly used in this version, but good to keep if needed later
+import firestore from '@react-native-firebase/firestore'; // Ensure firestore is imported
+import {getAllUserHabits, getCurrentUserId} from '../../ReadData'; // Your Firestore read function
+import {IconComponents} from '../../ReadData'; // Your icon component map
+import {
+  deleteCompletionFromFirestore,
+  logHabitCompletion,
+} from '../../WriteData';
 
 const HabbitsScreen = () => {
   const navigation = useNavigation();
-  // Use state for habits to allow dynamic updates
-  const [habits, setHabits] = useState(ALL_HABITS_DATA_SIMULATED);
-  const [habitData, setHabitData] = useState('')
-  // Function to check if a habit was completed today
-  const isHabitCompletedToday = habitId => {
-    const today = new Date();
-    return ALL_COMPLETIONS_DATA_SIMULATED.some(
-      comp => comp.habitId === habitId && isSameDay(comp.completedAt, today),
-    );
-  };
+  const route = useRoute();
+  const [habitData, setHabitData] = useState([]);
+  const [loadingHabits, setLoadingHabits] = useState(true);
+  const [error, setError] = useState(null);
+  const [todayCompletions, setTodayCompletions] = useState({});
 
-  // Effect to update the 'isSelected' status based on today's completions
-  useEffect(() => {
-    const updatedHabits = habits.map(habit => ({
-      ...habit,
-      isSelected: isHabitCompletedToday(habit.id),
-    }));
-    setHabits(updatedHabits);
-  }, [ALL_COMPLETIONS_DATA_SIMULATED]); // Re-run when simulated completions change
+  const fetchHabitData = async () => {
+    setLoadingHabits(true);
+    setError(null);
+    const userId = getCurrentUserId();
 
-  useEffect(() => {
-    getData();
-  }, []);
-  useEffect(() => {
-    const getHabitData = async () => {
-      try {
-        const result = await getAllUserHabits(); // call your async helper
-        console.log('result---',result)
-        setHabitData(result); // store the data in state
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
+    if (!userId) {
+      setError('User not authenticated.');
+      setLoadingHabits(false);
+      return;
+    }
 
-    getHabitData(); // call the inner async function
-  }, []);
-  const getData = async () => {
     try {
-      const data = await firestore()
-        .collection('users')
-        .doc('Fml5VwQ7NxTrThBIEUOb8yUdBHF3')
-        .get();
-      console.log('data========', data);
-      return data;
-    } catch (e) {
-      console.log('e', e);
+      const fetchedHabits = await getAllUserHabits();
+      setHabitData(fetchedHabits);
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setDate(today.getDate() + 1);
+
+      const completionsMap = {};
+      for (const habit of fetchedHabits) {
+        const completionsRef = firestore()
+          .collection('users')
+          .doc(userId)
+          .collection('habits')
+          .doc(habit.id)
+          .collection('completions');
+
+        const querySnapshot = await completionsRef
+          .where('date', '>=', firestore.Timestamp.fromDate(today))
+          .where('date', '<', firestore.Timestamp.fromDate(endOfDay))
+          .get();
+
+        if (!querySnapshot.empty) {
+          completionsMap[habit.id] = querySnapshot.docs[0].id;
+        }
+      }
+      setTodayCompletions(completionsMap);
+    } catch (err) {
+      console.error('Error fetching habit data:', err);
+      setError('Failed to load habits. Please check your internet connection.');
+      Alert.alert('Error', 'Failed to load habits. Please try again.');
+    } finally {
+      setLoadingHabits(false);
     }
   };
-  // Function to toggle habit completion
-  const toggleHabitCompletion = habitId => {
-    const today = new Date();
-    const isCompleted = isHabitCompletedToday(habitId);
 
-    if (isCompleted) {
-      // Simulate removing completion (e.g., user unchecks)
-      ALL_COMPLETIONS_DATA_SIMULATED = ALL_COMPLETIONS_DATA_SIMULATED.filter(
-        comp =>
-          !(comp.habitId === habitId && isSameDay(comp.completedAt, today)),
-      );
-      Alert.alert('Habit Unmarked', 'Habit has been unmarked for today.');
-    } else {
-      // Simulate adding completion
-      ALL_COMPLETIONS_DATA_SIMULATED.push({
-        habitId: habitId,
-        completedAt: today,
-      });
-      Alert.alert('Habit Completed!', 'Great job! Keep up the streak.');
+  // Streamlined useFocusEffect logic
+  useFocusEffect(
+    useCallback(() => {
+      const shouldFetch = route.params?.refresh || habitData.length === 0;
+
+      if (shouldFetch) {
+        console.log('HabbitsScreen focused, fetching data...');
+        fetchHabitData();
+        if (route.params?.refresh) {
+          navigation.setParams({refresh: false}); // Reset the flag
+        }
+      } else {
+        console.log('HabbitsScreen focused, no fetch needed.');
+      }
+
+      return () => {
+        // Cleanup function if needed
+      };
+    }, [route.params?.refresh, habitData.length]), // Dependencies: refresh param and habitData.length
+  );
+
+  const toggleHabitCompletion = async (habitId, xpEarned = 10) => {
+    const userId = getCurrentUserId();
+    if (!userId) {
+      Alert.alert('Error', 'User not authenticated. Please log in.');
+      return;
     }
 
-    // Force re-render to update UI (in a real app, Firestore listener would handle this)
-    setHabits(prevHabits =>
-      prevHabits.map(habit => ({
-        ...habit,
-        isSelected: isHabitCompletedToday(habit.id),
-      })),
-    );
+    const isCurrentlyCompleted = !!todayCompletions[habitId];
+    const completionId = todayCompletions[habitId];
+    const prevTodayCompletions = {...todayCompletions};
 
-    // In a real app, you would call your Firestore function here:
-    // if (isCompleted) {
-    //   deleteCompletionFromFirestore(habitId, today);
-    // } else {
-    //   addCompletionToFirestore(habitId, today);
-    // }
+    if (isCurrentlyCompleted) {
+      setTodayCompletions(prev => {
+        const newState = {...prev};
+        delete newState[habitId];
+        return newState;
+      });
+    } else {
+      setTodayCompletions(prev => ({
+        ...prev,
+        [habitId]: 'temp_id_for_optimistic_update',
+      }));
+    }
+
+    try {
+      if (isCurrentlyCompleted) {
+        await deleteCompletionFromFirestore(habitId, completionId, xpEarned);
+        Alert.alert('Habit Unmarked', 'Habit has been unmarked for today.');
+      } else {
+        await logHabitCompletion(habitId, new Date(), 1, '', xpEarned);
+        await firestore()
+          .collection('users')
+          .doc(userId)
+          .update({
+            totalXP: firestore.FieldValue.increment(xpEarned),
+          });
+        Alert.alert('Habit Completed!', 'Great job! Keep up the streak.');
+      }
+      await fetchHabitData();
+    } catch (error) {
+      console.error('Error toggling habit completion:', error);
+      Alert.alert(
+        'Error',
+        `Failed to update habit completion: ${error.message}. Reverting changes.`,
+      );
+      setTodayCompletions(prevTodayCompletions);
+      await fetchHabitData();
+    }
   };
 
   const noHabits = () => {
     return (
-      <View className="flex-1 bg-white items-center justify-center px-4">
-        <Text className="text-lg text-gray-600 mb-4 text-center">
+      <View className="flex-1 bg-gray-50 items-center justify-center px-4">
+        <Icon name="add-circle-outline" size={60} color="#CBD5E0" />
+        <Text className="text-lg text-gray-500 mb-4 text-center mt-4">
           You haven’t added any habits yet!
         </Text>
         <TouchableOpacity
-          onPress={() => navigation.navigate('AddHabit')} // Assuming 'AddHabit' is the route name for your modal
+          onPress={() => navigation.navigate('AddHabit')}
           className="bg-violet-500 px-6 py-3 rounded-full shadow-md">
           <Text className="text-white text-base font-semibold">
             Add New Habit
@@ -191,95 +170,140 @@ const HabbitsScreen = () => {
     );
   };
 
-  const renderHabitCard = ({item}) => (
-    <Animated.View className="bg-white px-6 py-6 mb-6 mt-3 mx-4 flex-row items-start shadow-lg shadow-violet-200 border-gray-200 rounded-xl">
-      <Pressable
-        // Navigate to HabitDetailScreen when the main card area is pressed
-        onPress={() =>
-          navigation.navigate('HabitDetail', {
-            habitId: item.id,
-            habitName: item.name,
-          })
-        }
-        className="flex-row items-start flex-1">
-        <View className="bg-violet-100 p-4 rounded-xl mr-5">
-          <Icon name={item.icon} size={24} color="#7C3AED" />
-        </View>
+  const renderHabitCard = ({item}) => {
+    const CurrentIconComponent = IconComponents[item.iconFamily || 'Ionicons'];
+    const iconName = item.icon || 'help-circle-outline';
+    const isCompleted = !!todayCompletions[item.id];
 
-        <View className="flex-1">
-          <Text className="text-2xl font-semibold text-gray-900">
-            {item.name}
-          </Text>
-          <Text className="text-sm text-gray-500 mb-3">{item.description}</Text>
-          <View className="flex-row items-center space-x-4">
-            <View className="flex-row items-center space-x-1">
-              <Icon name="time-outline" size={16} color="#6B7280" />
-              <Text className="text-xs text-gray-500">{item.time}</Text>
-            </View>
-            {item.reminder && (
-              <View className="flex-row items-center space-x-1">
-                <Icon name="notifications-outline" size={16} color="#6B7280" />
-                <Text className="text-xs text-gray-500">Reminder</Text>
-              </View>
+    return (
+      <Animated.View className="bg-white px-6 py-6 mb-6 mt-3 mx-4 flex-row items-start shadow-lg shadow-violet-200 border-gray-200 rounded-xl">
+        <Pressable
+          onPress={() =>
+            navigation.navigate('HabitDetail', {
+              habitId: item.id,
+            })
+          }
+          className="flex-row items-start flex-1">
+          <View className="bg-violet-100 p-4 rounded-xl mr-5">
+            {CurrentIconComponent && (
+              <CurrentIconComponent name={iconName} size={24} color="#7C3AED" />
             )}
           </View>
-        </View>
-
-        {/* Checkbox for completion */}
-        <TouchableOpacity
-          onPress={() => toggleHabitCompletion(item.id)}
-          className="ml-3 self-center" // Center vertically
-        >
-          {item.isSelected ? (
-            <View className="border border-violet-400 rounded-full w-8 h-8 bg-violet-400 items-center justify-center">
-              <Icon name="checkmark" size={16} color="white" />
+          <View className="flex-1">
+            <Text className="text-2xl font-semibold text-gray-900">
+              {item.name}
+            </Text>
+            {item.description ? (
+              <Text className="text-sm text-gray-500 mb-3">
+                {item.description}
+              </Text>
+            ) : null}
+            <View className="flex-row items-center space-x-4">
+              {item.reminder && item.reminder.enabled && item.reminder.time && (
+                <View className="flex-row items-center space-x-1">
+                  <Icon name="time-outline" size={16} color="#6B7280" />
+                  <Text className="text-xs text-gray-500">
+                    {item.reminder.time}
+                  </Text>
+                </View>
+              )}
+              {item.reminder && item.reminder.enabled && (
+                <View className="flex-row items-center space-x-1">
+                  <Icon
+                    name="notifications-outline"
+                    size={16}
+                    color="#6B7280"
+                  />
+                  <Text className="text-xs text-gray-500">Reminder On</Text>
+                </View>
+              )}
             </View>
-          ) : (
-            <View className="border border-violet-400 rounded-full w-8 h-8 bg-white" />
-          )}
+            {item.frequency && item.frequency.length > 0 && (
+              <Text className="text-xs text-gray-500 mt-1">
+                Frequency:{' '}
+                {item.frequencyType === 'daily'
+                  ? 'Daily'
+                  : item.frequency.join(', ')}
+              </Text>
+            )}
+            {item.createdAt && (
+              <Text className="text-xs text-gray-500 mt-1">
+                Created:{' '}
+                {new Date(item.createdAt.toDate()).toLocaleDateString()}
+              </Text>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={() => toggleHabitCompletion(item.id)}
+            className="ml-3 self-center">
+            {isCompleted ? (
+              <View className="border border-violet-400 rounded-full w-8 h-8 bg-violet-400 items-center justify-center">
+                <Icon name="checkmark" size={16} color="white" />
+              </View>
+            ) : (
+              <View className="border border-violet-400 rounded-full w-8 h-8 bg-white" />
+            )}
+          </TouchableOpacity>
+        </Pressable>
+      </Animated.View>
+    );
+  };
+
+  if (loadingHabits) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50">
+        <ActivityIndicator size="large" color="#6B46C1" />
+        <Text className="text-gray-700 mt-3">Loading Habits...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-50 p-5">
+        <Text className="text-red-500 text-center text-base mb-4">{error}</Text>
+        <TouchableOpacity
+          className="bg-violet-500 py-3 px-6 rounded-lg shadow-md"
+          onPress={fetchHabitData}>
+          <Text className="text-white font-semibold text-base">Retry</Text>
         </TouchableOpacity>
-      </Pressable>
-    </Animated.View>
-  );
+      </View>
+    );
+  }
 
   return (
-    <>
-      {habits.length > 0 ? (
-        <View className="flex-1 bg-gray-50 p-8 ">
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-3xl font-bold text-gray-800">
-              Today's Habits
-            </Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AddHabit')}
-              className="bg-violet-400 px-4 py-2 rounded-md flex-row items-center space-x-1">
-              <Icon name="add" size={16} color="#fff" />
-              <Text className="text-white font-medium text-sm">New Habit</Text>
-            </TouchableOpacity>
-          </View>
+    <SafeAreaView className="flex-1 bg-gray-50 p-4">
+      <View className="flex-row justify-between items-center mb-4">
+        <Text className="text-3xl font-bold text-gray-800">Today's Habits</Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('AddHabit')}
+          className="bg-violet-400 px-4 py-2 rounded-md flex-row items-center space-x-1">
+          <Icon name="add" size={16} color="#fff" />
+          <Text className="text-white font-medium text-sm">New Habit</Text>
+        </TouchableOpacity>
+      </View>
 
-          {/* New button to navigate to Overall Progress Screen */}
-          <TouchableOpacity
-            onPress={() => navigation.navigate('ProgressScreen')}
-            className="bg-purple-100 px-4 py-3 rounded-xl flex-row items-center justify-center space-x-2 mb-6 shadow-sm shadow-purple-200">
-            <Icon name="stats-chart-outline" size={20} color="#7C3AED" />
-            <Text className="text-violet-600 font-semibold text-base">
-              View Overall Progress
-            </Text>
-          </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => navigation.navigate('ProgressScreen')}
+        className="bg-purple-100 px-4 py-3 rounded-xl flex-row items-center justify-center space-x-2 mb-6 shadow-sm shadow-purple-200">
+        <Icon name="stats-chart-outline" size={20} color="#7C3AED" />
+        <Text className="text-violet-600 font-semibold text-base">
+          View Overall Progress
+        </Text>
+      </TouchableOpacity>
 
-          <FlatList
-            data={habits}
-            renderItem={renderHabitCard}
-            keyExtractor={item => item.id}
-            showsVerticalScrollIndicator={false}
-            className="mt-2" // Adjusted margin
-          />
-        </View>
+      {habitData.length > 0 ? (
+        <FlatList
+          data={habitData}
+          renderItem={renderHabitCard}
+          keyExtractor={item => item.id}
+          showsVerticalScrollIndicator={false}
+          className="mt-2"
+        />
       ) : (
         noHabits()
       )}
-    </>
+    </SafeAreaView>
   );
 };
 

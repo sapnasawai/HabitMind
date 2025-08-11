@@ -7,12 +7,20 @@ import {getAuth, onAuthStateChanged} from '@react-native-firebase/auth';
 import AppNavigator from './AppNavigator';
 import SplashScreen from './src/screens/SplashScreen';
 import AuthNavigator from './AuthNavigator';
+import firestore from '@react-native-firebase/firestore';
 
 export default function App() {
   const [user, setUser] = React.useState(null);
   const [initializing, setInitializing] = React.useState(true);
   const [splashDurationComplete, setSplashDurationComplete] =
     React.useState(false);
+
+  React.useEffect(() => {
+    firestore()
+      .settings({persistence: true})
+      .then(() => console.log('✅ Offline persistence enabled'))
+      .catch(err => console.error('❌ Failed to enable persistence', err));
+  }, []);
 
   React.useEffect(() => {
     const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
@@ -53,7 +61,7 @@ export default function App() {
       <NavigationContainer>
         {isAuthenticatedAndVerified(user) ? (
           // User is authenticated and email is verified
-          <AppNavigator  user= {user}/>
+          <AppNavigator user={user} />
         ) : (
           // No user, or user not verified
           <AuthNavigator />
