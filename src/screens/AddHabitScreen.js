@@ -23,19 +23,20 @@ import {format} from 'date-fns';
 import {addNewHabit} from '../../WriteData'; // Assuming this is your Firestore write function
 import {ICON_OPTIONS, IconComponents} from '../../ReadData'; // Assuming these are your icon lists
 
-const AddHabitScreen = () => {
+const AddHabitScreen = ({route}) => {
   const navigation = useNavigation();
-
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const {habitToEdit} = route.params || {}
+  console.log('habitToEdit---',habitToEdit)
+  const [name, setName] = useState(habitToEdit?.name);
+  const [description, setDescription] = useState(habitToEdit?.description);
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [reminder, setReminder] = useState(false);
+  const [reminder, setReminder] = useState(habitToEdit?.reminder?.enabled);
 
   // Icon states
   const [selectedIcon, setSelectedIcon] = useState({
-    name: 'walk-outline',
-    family: 'Ionicons',
+    name: habitToEdit?.icon,
+    family: habitToEdit?.iconFamily,
   });
   const [isIconPickerVisible, setIsIconPickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
