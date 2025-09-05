@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -18,32 +18,36 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {useNavigation} from '@react-navigation/native';
-import {format} from 'date-fns';
-import {addNewHabit} from '../../WriteData'; // Assuming this is your Firestore write function
-import {ICON_OPTIONS, IconComponents} from '../../ReadData'; // Assuming these are your icon lists
+import { useNavigation } from '@react-navigation/native';
+import { format } from 'date-fns';
+// import { useHabitStore } from '../../stores';
+import { ICON_OPTIONS, IconComponents } from '../../ReadData';
+import { useHabitStore } from '../stores';
 
-const AddHabitScreen = ({route}) => {
+const AddHabitScreen = ({ route }) => {
   const navigation = useNavigation();
-  const {habitToEdit} = route.params || {}
-  console.log('habitToEdit---',habitToEdit)
-  const [name, setName] = useState(habitToEdit?.name);
-  const [description, setDescription] = useState(habitToEdit?.description);
+  const { habitToEdit } = route.params || {};
+  
+  // Use Zustand store instead of manual Firestore calls
+  const { addHabit, updateHabit, loading: storeLoading } = useHabitStore();
+  
+  const [name, setName] = useState(habitToEdit?.name || '');
+  const [description, setDescription] = useState(habitToEdit?.description || '');
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [reminder, setReminder] = useState(habitToEdit?.reminder?.enabled);
+  const [reminder, setReminder] = useState(habitToEdit?.reminder?.enabled || false);
 
   // Icon states
   const [selectedIcon, setSelectedIcon] = useState({
-    name: habitToEdit?.icon,
-    family: habitToEdit?.iconFamily,
+    name: habitToEdit?.icon || 'walk-outline',
+    family: habitToEdit?.iconFamily || 'Ionicons',
   });
   const [isIconPickerVisible, setIsIconPickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Frequency states
-  const [frequencyType, setFrequencyType] = useState('daily');
-  const [selectedDays, setSelectedDays] = useState([]);
+  const [frequencyType, setFrequencyType] = useState(habitToEdit?.frequencyType || 'daily');
+  const [selectedDays, setSelectedDays] = useState(habitToEdit?.frequency || []);
   const DAYS_OF_WEEK = [
     'Sunday',
     'Monday',
@@ -108,25 +112,32 @@ const AddHabitScreen = ({route}) => {
         // --- Icon Data ---
         icon: selectedIcon.name, // Store icon name
         iconFamily: selectedIcon.family, // Store icon family
-
-        // Firestore will automatically add `createdAt` if your `addNewHabit` function uses `serverTimestamp()`
-        // as per the data structure we discussed.
       };
 
       console.log('Saving habit:', habitData);
-      await addNewHabit(habitData); // Call your Firestore write function
-      Alert.alert('Success', 'Habit added successfully!');
+      
+      if (habitToEdit) {
+        // Update existing habit
+        await updateHabit(habitToEdit.id, habitData);
+        Alert.alert('Success', 'Habit updated successfully!');
+      } else {
+        // Add new habit
+        await addHabit(habitData);
+        Alert.alert('Success', 'Habit added successfully!');
+      }
 
       // Clear form fields after successful save
-      setName('');
-      setDescription('');
-      setTime(new Date());
-      setReminder(false);
-      setSelectedIcon({name: 'walk-outline', family: 'Ionicons'});
-      setFrequencyType('daily');
-      setSelectedDays([]);
+      if (!habitToEdit) {
+        setName('');
+        setDescription('');
+        setTime(new Date());
+        setReminder(false);
+        setSelectedIcon({ name: 'walk-outline', family: 'Ionicons' });
+        setFrequencyType('daily');
+        setSelectedDays([]);
+      }
 
-      navigation.navigate('Habbits', {refresh: true});
+      navigation.navigate('Habbits', { refresh: true });
     } catch (error) {
       console.error('Error saving habit:', error);
       Alert.alert('Error', 'Failed to save habit. Please try again.');
@@ -135,7 +146,7 @@ const AddHabitScreen = ({route}) => {
     }
   };
 
-  const renderIconItem = ({item}) => {
+  const renderIconItem = ({ item }) => {
     const CurrentIconComponent = IconComponents[item.family];
     if (!CurrentIconComponent) {
       console.warn(
@@ -156,7 +167,7 @@ const AddHabitScreen = ({route}) => {
                         : 'bg-white border-gray-200'
                     }`}
         onPress={() => {
-          setSelectedIcon({name: item.name, family: item.family});
+          setSelectedIcon({ name: item.name, family: item.family });
           setIsIconPickerVisible(false); // Close modal on selection
         }}>
         <CurrentIconComponent
@@ -183,9 +194,9 @@ const AddHabitScreen = ({route}) => {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           className="flex-1">
-          <ScrollView contentContainerStyle={{flexGrow: 1, padding: 20}}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20 }}>
             <Text className="text-3xl font-bold text-gray-800 text-center mb-7">
-              Add New Habit
+              {habitToEdit ? 'Edit Habit' : 'Add New Habit'}
             </Text>
 
             {/* Habit Name */}
@@ -282,7 +293,7 @@ const AddHabitScreen = ({route}) => {
               <Switch
                 value={reminder}
                 onValueChange={setReminder}
-                trackColor={{false: '#E2E8F0', true: '#A78BFA'}} // gray-200, purple-400
+                trackColor={{ false: '#E2E8F0', true: '#A78BFA' }} // gray-200, purple-400
                 thumbColor={reminder ? '#7C3AED' : '#F7FAFC'} // purple-600, white
               />
             </View>
@@ -343,12 +354,12 @@ const AddHabitScreen = ({route}) => {
             <TouchableOpacity
               className="bg-violet-500 py-4 rounded-lg shadow-md items-center justify-center mb-5"
               onPress={handleSave}
-              disabled={loading}>
-              {loading ? (
+              disabled={loading || storeLoading}>
+              {loading || storeLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text className="text-white text-lg font-semibold">
-                  Save Habit
+                  {habitToEdit ? 'Update Habit' : 'Save Habit'}
                 </Text>
               )}
             </TouchableOpacity>

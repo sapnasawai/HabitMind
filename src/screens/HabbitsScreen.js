@@ -1,4 +1,4 @@
-import React, {useState, useCallback, useEffect} from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,148 +7,72 @@ import {
   FlatList,
   Animated,
   Alert,
-  ActivityIndicator, // Added for loading indicator
-  SafeAreaView, // Added for proper layout
+  ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
 import {
   useFocusEffect,
   useNavigation,
   useRoute,
 } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/Ionicons'; // Assuming Ionicons is the primary icon set
-// import {isSameDay, format} from 'date-fns'; // Not directly used in this version, but good to keep if needed later
-import firestore from '@react-native-firebase/firestore'; // Ensure firestore is imported
-import {getAllUserHabits, getCurrentUserId} from '../../ReadData'; // Your Firestore read function
-import {IconComponents} from '../../ReadData'; // Your icon component map
-import {
-  deleteCompletionFromFirestore,
-  logHabitCompletion,
-} from '../../WriteData';
+import Icon from 'react-native-vector-icons/Ionicons';
+// import { useHabitStore, useCompletionStore } from '../../stores';
+// import { useHabitsWithCompletions } from '../../hooks/useStoreUtils';
+import { IconComponents } from '../../ReadData';
+import { useHabitStore, useProgressStore } from '../stores';
 
 const HabbitsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const [habitData, setHabitData] = useState([]);
-  const [loadingHabits, setLoadingHabits] = useState(true);
-  const [error, setError] = useState(null);
-  const [todayCompletions, setTodayCompletions] = useState({});
+  
+  // Use new store structure with proper selectors
+  const habits = useHabitStore((state) => state.habits);
+  const todayCompletions = useHabitStore((state) => state.todayCompletions);
+  const loading = useHabitStore((state) => state.loading);
+  const error = useHabitStore((state) => state.error);
+  const logCompletion = useHabitStore((state) => state.logCompletion);
+  const deleteCompletion = useHabitStore((state) => state.deleteCompletion);
 
-  const fetchHabitData = async () => {
-    setLoadingHabits(true);
-    setError(null);
-    const userId = getCurrentUserId();
+  // Get habits with completion status using progress store
+  const getHabitsWithCompletions = useProgressStore((state) => state.getHabitsWithCompletions);
+  const habitsWithCompletions = getHabitsWithCompletions(habits, todayCompletions);
 
-    if (!userId) {
-      setError('User not authenticated.');
-      setLoadingHabits(false);
-      return;
-    }
-
-    try {
-      const fetchedHabits = await getAllUserHabits();
-      setHabitData(fetchedHabits);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(today);
-      endOfDay.setDate(today.getDate() + 1);
-
-      const completionsMap = {};
-      for (const habit of fetchedHabits) {
-        const completionsRef = firestore()
-          .collection('users')
-          .doc(userId)
-          .collection('habits')
-          .doc(habit.id)
-          .collection('completions');
-
-        const querySnapshot = await completionsRef
-          .where('date', '>=', firestore.Timestamp.fromDate(today))
-          .where('date', '<', firestore.Timestamp.fromDate(endOfDay))
-          .get();
-
-        if (!querySnapshot.empty) {
-          completionsMap[habit.id] = querySnapshot.docs[0].id;
-        }
-      }
-      setTodayCompletions(completionsMap);
-    } catch (err) {
-      console.error('Error fetching habit data:', err);
-      setError('Failed to load habits. Please check your internet connection.');
-      Alert.alert('Error', 'Failed to load habits. Please try again.');
-    } finally {
-      setLoadingHabits(false);
-    }
-  };
-
-  // Streamlined useFocusEffect logic
+  // Fetch data when screen comes into focus
   useFocusEffect(
-    useCallback(() => {
-      const shouldFetch = route.params?.refresh || habitData.length === 0;
-
-      if (shouldFetch) {
-        console.log('HabbitsScreen focused, fetching data...');
-        fetchHabitData();
-        if (route.params?.refresh) {
-          navigation.setParams({refresh: false}); // Reset the flag
-        }
-      } else {
-        console.log('HabbitsScreen focused, no fetch needed.');
+    React.useCallback(() => {
+      if (route.params?.refresh) {
+        console.log('HabbitsScreen focused, refreshing data...');
+        // Data will be refreshed automatically by real-time listeners
+        navigation.setParams({refresh: false}); // Reset the flag
       }
-
-      return () => {
-        // Cleanup function if needed
-      };
-    }, [route.params?.refresh, habitData.length]), // Dependencies: refresh param and habitData.length
+    }, [route.params?.refresh, navigation]),
   );
 
   const toggleHabitCompletion = async (habitId, xpEarned = 10) => {
-    const userId = getCurrentUserId();
-    if (!userId) {
-      Alert.alert('Error', 'User not authenticated. Please log in.');
-      return;
-    }
-
-    const isCurrentlyCompleted = !!todayCompletions[habitId];
-    const completionId = todayCompletions[habitId];
-    const prevTodayCompletions = {...todayCompletions};
-
-    if (isCurrentlyCompleted) {
-      setTodayCompletions(prev => {
-        const newState = {...prev};
-        delete newState[habitId];
-        return newState;
-      });
-    } else {
-      setTodayCompletions(prev => ({
-        ...prev,
-        [habitId]: 'temp_id_for_optimistic_update',
-      }));
-    }
-
     try {
+      const habit = habits.find(h => h.id === habitId);
+      const isCurrentlyCompleted = habitsWithCompletions.find(h => h.id === habitId)?.isCompletedToday;
+      
       if (isCurrentlyCompleted) {
-        await deleteCompletionFromFirestore(habitId, completionId, xpEarned);
-        Alert.alert('Habit Unmarked', 'Habit has been unmarked for today.');
+        // Delete today's completion
+        const completionId = habitsWithCompletions.find(h => h.id === habitId)?.todayCompletionId;
+        if (completionId) {
+          await deleteCompletion(habitId, completionId, xpEarned);
+          Alert.alert('Habit Unmarked', 'Habit has been unmarked for today.');
+        }
       } else {
-        await logHabitCompletion(habitId, new Date(), 1, '', xpEarned);
-        await firestore()
-          .collection('users')
-          .doc(userId)
-          .update({
-            totalXP: firestore.FieldValue.increment(xpEarned),
-          });
+        // Log new completion
+        await logCompletion(habitId, new Date(), 1, '', xpEarned);
         Alert.alert('Habit Completed!', 'Great job! Keep up the streak.');
       }
-      await fetchHabitData();
+      
+              // Data will be refreshed automatically by real-time listeners
     } catch (error) {
       console.error('Error toggling habit completion:', error);
       Alert.alert(
         'Error',
-        `Failed to update habit completion: ${error.message}. Reverting changes.`,
+        `Failed to update habit completion: ${error.message}. Please try again.`,
       );
-      setTodayCompletions(prevTodayCompletions);
-      await fetchHabitData();
     }
   };
 
@@ -157,7 +81,7 @@ const HabbitsScreen = () => {
       <View className="flex-1 bg-gray-50 items-center justify-center px-4">
         <Icon name="add-circle-outline" size={60} color="#CBD5E0" />
         <Text className="text-lg text-gray-500 mb-4 text-center mt-4">
-          You haven’t added any habits yet!
+          You haven't added any habits yet!
         </Text>
         <TouchableOpacity
           onPress={() => navigation.navigate('AddHabit')}
@@ -173,7 +97,7 @@ const HabbitsScreen = () => {
   const renderHabitCard = ({item}) => {
     const CurrentIconComponent = IconComponents[item.iconFamily || 'Ionicons'];
     const iconName = item.icon || 'help-circle-outline';
-    const isCompleted = !!todayCompletions[item.id];
+    const isCompleted = item.isCompletedToday;
 
     return (
       <Animated.View className="bg-white px-6 py-6 mb-6 mt-3 mx-4 flex-row items-start shadow-lg shadow-violet-200 border-gray-200 rounded-xl">
@@ -249,7 +173,8 @@ const HabbitsScreen = () => {
     );
   };
 
-  if (loadingHabits) {
+  // Show loading state
+  if (loading) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50">
         <ActivityIndicator size="large" color="#6B46C1" />
@@ -258,13 +183,18 @@ const HabbitsScreen = () => {
     );
   }
 
+  // Show error state
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 p-5">
-        <Text className="text-red-500 text-center text-base mb-4">{error}</Text>
+        <Text className="text-red-500 text-center text-base mb-4">
+          {error}
+        </Text>
         <TouchableOpacity
           className="bg-violet-500 py-3 px-6 rounded-lg shadow-md"
-          onPress={fetchHabitData}>
+          onPress={() => {
+            // Data will be refreshed automatically by real-time listeners
+          }}>
           <Text className="text-white font-semibold text-base">Retry</Text>
         </TouchableOpacity>
       </View>
@@ -292,9 +222,9 @@ const HabbitsScreen = () => {
         </Text>
       </TouchableOpacity>
 
-      {habitData.length > 0 ? (
+      {habitsWithCompletions.length > 0 ? (
         <FlatList
-          data={habitData}
+          data={habitsWithCompletions}
           renderItem={renderHabitCard}
           keyExtractor={item => item.id}
           showsVerticalScrollIndicator={false}

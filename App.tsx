@@ -8,13 +8,15 @@ import AppNavigator from './AppNavigator';
 import SplashScreen from './src/screens/SplashScreen';
 import AuthNavigator from './AuthNavigator';
 import firestore from '@react-native-firebase/firestore';
+import {useAppInitialization} from './src/hooks/useAppInitialization';
 
 export default function App() {
   const [user, setUser] = React.useState(null);
   const [initializing, setInitializing] = React.useState(true);
   const [splashDurationComplete, setSplashDurationComplete] =
     React.useState(false);
-
+  // Initialize stores when user changes
+  useAppInitialization(user);
   React.useEffect(() => {
     firestore()
       .settings({persistence: true})
@@ -35,11 +37,11 @@ export default function App() {
     });
   }, []);
 
-  function handleAuthStateChanged(user) {
+  function handleAuthStateChanged(user: any) {
     setUser(user);
     if (initializing) setInitializing(false);
   }
-  const isAuthenticatedAndVerified = user => {
+  const isAuthenticatedAndVerified = (user: any) => {
     return user !== null && user !== undefined && user.emailVerified;
   };
 
