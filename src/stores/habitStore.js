@@ -22,7 +22,12 @@ export const useHabitStore = create(
     // Initialize real-time listeners
     initializeListeners: () => {
       const userId = auth().currentUser?.uid;
-      if (!userId) return;
+      if (!userId) {
+        console.log('⚠️ No user ID, skipping habit listeners initialization');
+        return;
+      }
+
+      console.log('📡 Setting up habit listeners for user:', userId);
 
       // Clear existing listeners
       get().cleanupListeners();
@@ -35,6 +40,7 @@ export const useHabitStore = create(
         .orderBy('createdAt', 'asc')
         .onSnapshot(
           (querySnapshot) => {
+            console.log('📋 Habits listener triggered, documents:', querySnapshot.size);
             const habits = [];
             querySnapshot.forEach(documentSnapshot => {
               habits.push({
@@ -43,6 +49,7 @@ export const useHabitStore = create(
               });
             });
             
+            console.log('📋 Updating habits in store:', habits.length);
             set({ 
               habits, 
               lastUpdated: new Date(),
@@ -50,7 +57,7 @@ export const useHabitStore = create(
             });
           },
           (error) => {
-            console.error('Error in habits listener:', error);
+            console.error('❌ Error in habits listener:', error);
             set({ error: error.message || 'Failed to sync habits' });
           }
         );
@@ -362,13 +369,16 @@ export const useHabitStore = create(
     },
 
     // Clear all data (useful for logout)
-    clearAllData: () => set({ 
-      habits: [], 
-      completions: {},
-      lastUpdated: null, 
-      error: null,
-      listeners: []
-    }),
+    clearAllData: () => {
+      console.log('🧹 Clearing all habit store data');
+      set({ 
+        habits: [], 
+        completions: {},
+        lastUpdated: null, 
+        error: null,
+        listeners: []
+      });
+    },
 
     // Check if habit is completed today
     isCompletedToday: (habitId) => {

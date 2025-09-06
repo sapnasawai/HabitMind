@@ -68,9 +68,8 @@ const AppNavigator = ({user}) => {
       screenOptions={{
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#FFF', // White header background
+          backgroundColor: '#FFF',
         },
-        // headerTintColor: '#7C3AED', // Violet color for back button and title
         headerTitleStyle: {
           fontWeight: 'bold',
         },
@@ -82,7 +81,6 @@ const AppNavigator = ({user}) => {
           contentStyle: {backgroundColor: 'white'},
         }}
         component={props => <BottomTabRootStack {...props} user={user} />}
-        // component={BottomTabRootStack}
       />
       <Stack.Screen
         name="AddHabit"
@@ -93,7 +91,7 @@ const AppNavigator = ({user}) => {
         name="HabitDetail"
         component={HabitDetailScreen}
         options={({route}) => ({
-          title: route.params?.habitName || 'Habit Details', // Dynamic title from params
+          title: route.params?.habitName || 'Habit Details',
         })}
       />
       <Stack.Screen

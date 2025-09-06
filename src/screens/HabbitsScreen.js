@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, {useEffect} from 'react';
 import {
   View,
   Text,
@@ -18,25 +18,30 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 // import { useHabitStore, useCompletionStore } from '../../stores';
 // import { useHabitsWithCompletions } from '../../hooks/useStoreUtils';
-import { IconComponents } from '../../ReadData';
-import { useHabitStore, useProgressStore } from '../stores';
+import {IconComponents} from '../../ReadData';
+import {useHabitStore, useProgressStore} from '../stores';
 
 const HabbitsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  
-  // Use new store structure with proper selectors
-  const habits = useHabitStore((state) => state.habits);
-  const loading = useHabitStore((state) => state.loading);
-  const error = useHabitStore((state) => state.error);
-  const logCompletion = useHabitStore((state) => state.logCompletion);
-  const deleteCompletion = useHabitStore((state) => state.deleteCompletion);
-  const getTodayCompletions = useHabitStore((state) => state.getTodayCompletions);
 
+  // Use new store structure with proper selectors
+  const habits = useHabitStore(state => state.habits);
+  const loading = useHabitStore(state => state.loading);
+  const error = useHabitStore(state => state.error);
+  const logCompletion = useHabitStore(state => state.logCompletion);
+  const deleteCompletion = useHabitStore(state => state.deleteCompletion);
+  const getTodayCompletions = useHabitStore(state => state.getTodayCompletions);
+  const completions = useHabitStore(state => state.completions);
   // Get habits with completion status using progress store
-  const getHabitsWithCompletions = useProgressStore((state) => state.getHabitsWithCompletions);
+  const getHabitsWithCompletions = useProgressStore(
+    state => state.getHabitsWithCompletions,
+  );
   const todayCompletions = getTodayCompletions();
-  const habitsWithCompletions = getHabitsWithCompletions(habits, todayCompletions);
+  const habitsWithCompletions = getHabitsWithCompletions(
+    habits,
+    todayCompletions,
+  );
 
   // Fetch data when screen comes into focus
   useFocusEffect(
@@ -52,11 +57,15 @@ const HabbitsScreen = () => {
   const toggleHabitCompletion = async (habitId, xpEarned = 10) => {
     try {
       const habit = habits.find(h => h.id === habitId);
-      const isCurrentlyCompleted = habitsWithCompletions.find(h => h.id === habitId)?.isCompletedToday;
-      
+      const isCurrentlyCompleted = habitsWithCompletions.find(
+        h => h.id === habitId,
+      )?.isCompletedToday;
+
       if (isCurrentlyCompleted) {
         // Delete today's completion
-        const completionId = habitsWithCompletions.find(h => h.id === habitId)?.todayCompletionId;
+        const completionId = habitsWithCompletions.find(
+          h => h.id === habitId,
+        )?.todayCompletionId;
         if (completionId) {
           await deleteCompletion(habitId, completionId, xpEarned);
           Alert.alert('Habit Unmarked', 'Habit has been unmarked for today.');
@@ -186,9 +195,7 @@ const HabbitsScreen = () => {
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-50 p-5">
-        <Text className="text-red-500 text-center text-base mb-4">
-          {error}
-        </Text>
+        <Text className="text-red-500 text-center text-base mb-4">{error}</Text>
         <TouchableOpacity
           className="bg-violet-500 py-3 px-6 rounded-lg shadow-md"
           onPress={() => {
