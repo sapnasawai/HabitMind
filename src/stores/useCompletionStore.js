@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { persist, subscribeWithSelector } from 'zustand/middleware';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 
 // Completion store for tracking habit completions
 export const useCompletionStore = create(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector(persist((set, get) => ({
     // State
     completions: {}, // { habitId: [completions] }
     todayCompletions: {}, // { habitId: completionId }
@@ -394,5 +394,5 @@ export const useCompletionStore = create(
       return () => unsubscribers.forEach(unsub => unsub());
     },
   }))
-);
+));
 

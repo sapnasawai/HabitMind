@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { persist, subscribeWithSelector } from 'zustand/middleware';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 
 // Clean habit store with real-time listeners and proper selectors
 export const useHabitStore = create(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector(persist((set, get) => ({
     // State
     habits: [],
     completions: {}, // { habitId: [completions] }
@@ -412,4 +412,4 @@ export const useHabitStore = create(
       return todayCompletions;
     },
   }))
-);
+));

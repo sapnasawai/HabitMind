@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { persist, subscribeWithSelector } from 'zustand/middleware';
 
 // Progress store for derived data and statistics
 export const useProgressStore = create(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector(persist((set, get) => ({
     // State
     loading: false,
     error: null,
@@ -128,4 +128,4 @@ export const useProgressStore = create(
       error: null 
     }),
   }))
-);
+));

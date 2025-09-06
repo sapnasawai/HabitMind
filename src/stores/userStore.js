@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { persist, subscribeWithSelector } from 'zustand/middleware';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 
 // Clean user store for authentication and user data
 export const useUserStore = create(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector(persist((set, get) => ({
     // State
     user: null,
     profile: null,
@@ -144,4 +144,4 @@ export const useUserStore = create(
       };
     },
   }))
-);
+));

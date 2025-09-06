@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { persist, subscribeWithSelector } from 'zustand/middleware';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 
 // Habit store for managing all habit-related state
 export const useHabitStore = create(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector(persist((set, get) => ({
     // State
     habits: [],
     loading: false,
@@ -222,6 +222,6 @@ export const useHabitStore = create(
       return unsubscribe;
     },
   }))
-);
+));
 
 
