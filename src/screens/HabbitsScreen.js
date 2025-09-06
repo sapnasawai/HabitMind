@@ -27,14 +27,15 @@ const HabbitsScreen = () => {
   
   // Use new store structure with proper selectors
   const habits = useHabitStore((state) => state.habits);
-  const todayCompletions = useHabitStore((state) => state.todayCompletions);
   const loading = useHabitStore((state) => state.loading);
   const error = useHabitStore((state) => state.error);
   const logCompletion = useHabitStore((state) => state.logCompletion);
   const deleteCompletion = useHabitStore((state) => state.deleteCompletion);
+  const getTodayCompletions = useHabitStore((state) => state.getTodayCompletions);
 
   // Get habits with completion status using progress store
   const getHabitsWithCompletions = useProgressStore((state) => state.getHabitsWithCompletions);
+  const todayCompletions = getTodayCompletions();
   const habitsWithCompletions = getHabitsWithCompletions(habits, todayCompletions);
 
   // Fetch data when screen comes into focus
@@ -65,8 +66,6 @@ const HabbitsScreen = () => {
         await logCompletion(habitId, new Date(), 1, '', xpEarned);
         Alert.alert('Habit Completed!', 'Great job! Keep up the streak.');
       }
-      
-              // Data will be refreshed automatically by real-time listeners
     } catch (error) {
       console.error('Error toggling habit completion:', error);
       Alert.alert(

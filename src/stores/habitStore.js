@@ -9,7 +9,6 @@ export const useHabitStore = create(
     // State
     habits: [],
     completions: {}, // { habitId: [completions] }
-    todayCompletions: {}, // { habitId: completionId }
     loading: false,
     error: null,
     lastUpdated: null,
@@ -107,60 +106,6 @@ export const useHabitStore = create(
       set({ listeners: newListeners });
     },
 
-    // Fetch today's completions
-    fetchTodayCompletions: async (habitIds = []) => {
-      const { setLoading, setError } = get();
-      const userId = auth().currentUser?.uid;
-      
-      if (!userId) {
-        setError('No authenticated user');
-        return {};
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(today);
-        endOfDay.setDate(today.getDate() + 1);
-
-        const todayCompletionsMap = {};
-
-        for (const habitId of habitIds) {
-          const completionsRef = firestore()
-            .collection('users')
-            .doc(userId)
-            .collection('habits')
-            .doc(habitId)
-            .collection('completions');
-
-          const querySnapshot = await completionsRef
-            .where('date', '>=', firestore.Timestamp.fromDate(today))
-            .where('date', '<', firestore.Timestamp.fromDate(endOfDay))
-            .get();
-
-          if (!querySnapshot.empty) {
-            todayCompletionsMap[habitId] = querySnapshot.docs[0].id;
-          }
-        }
-
-        set({ 
-          todayCompletions: todayCompletionsMap,
-          lastUpdated: new Date(),
-          error: null 
-        });
-
-        return todayCompletionsMap;
-      } catch (error) {
-        console.error('Error fetching today\'s completions:', error);
-        setError(error.message || 'Failed to fetch today\'s completions');
-        return {};
-      } finally {
-        setLoading(false);
-      }
-    },
 
     // Add new habit
     addHabit: async (habitData) => {
@@ -420,7 +365,6 @@ export const useHabitStore = create(
     clearAllData: () => set({ 
       habits: [], 
       completions: {},
-      todayCompletions: {},
       lastUpdated: null, 
       error: null,
       listeners: []
@@ -428,7 +372,7 @@ export const useHabitStore = create(
 
     // Check if habit is completed today
     isCompletedToday: (habitId) => {
-      const { todayCompletions } = get();
+      const todayCompletions = get().getTodayCompletions();
       return !!todayCompletions[habitId];
     },
 
@@ -441,6 +385,31 @@ export const useHabitStore = create(
         const completionDate = completion.date.toDate();
         return completionDate >= startDate && completionDate <= endDate;
       }).length;
+    },
+
+    // Get today's completions computed from completions data
+    getTodayCompletions: () => {
+      const { completions } = get();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(today);
+      endOfDay.setDate(today.getDate() + 1);
+
+      const todayCompletions = {};
+      
+      Object.keys(completions).forEach(habitId => {
+        const habitCompletions = completions[habitId] || [];
+        const todayCompletion = habitCompletions.find(completion => {
+          const completionDate = completion.date.toDate();
+          return completionDate >= today && completionDate < endOfDay;
+        });
+        
+        if (todayCompletion) {
+          todayCompletions[habitId] = todayCompletion.id;
+        }
+      });
+
+      return todayCompletions;
     },
   }))
 );
