@@ -1,11 +1,11 @@
-import { create } from 'zustand';
-import { persist, subscribeWithSelector } from 'zustand/middleware';
+import {create} from 'zustand';
+import {subscribeWithSelector} from 'zustand/middleware';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 
 // Completion store for tracking habit completions
 export const useCompletionStore = create(
-  subscribeWithSelector(persist((set, get) => ({
+  subscribeWithSelector((set, get) => ({
     // State
     completions: {}, // { habitId: [completions] }
     todayCompletions: {}, // { habitId: completionId }
@@ -14,15 +14,19 @@ export const useCompletionStore = create(
     lastUpdated: null,
 
     // Actions
-    setLoading: (loading) => set({ loading }),
-    setError: (error) => set({ error }),
-    clearError: () => set({ error: null }),
+    setLoading: loading => set({loading}),
+    setError: error => set({error}),
+    clearError: () => set({error: null}),
 
     // Fetch completions for a specific habit
-    fetchCompletionsForHabit: async (habitId, startDate = null, endDate = null) => {
-      const { setLoading, setError } = get();
+    fetchCompletionsForHabit: async (
+      habitId,
+      startDate = null,
+      endDate = null,
+    ) => {
+      const {setLoading, setError} = get();
       const userId = auth().currentUser?.uid;
-      
+
       if (!userId) {
         setError('No authenticated user');
         return [];
@@ -31,7 +35,7 @@ export const useCompletionStore = create(
       try {
         setLoading(true);
         setError(null);
-        
+
         let query = firestore()
           .collection('users')
           .doc(userId)
@@ -48,8 +52,8 @@ export const useCompletionStore = create(
 
         const querySnapshot = await query.orderBy('date', 'desc').get();
         const habitCompletions = [];
-        
-        querySnapshot.forEach((doc) => {
+
+        querySnapshot.forEach(doc => {
           habitCompletions.push({
             id: doc.id,
             ...doc.data(),
@@ -57,7 +61,7 @@ export const useCompletionStore = create(
         });
 
         // Update completions state
-        set((state) => ({
+        set(state => ({
           completions: {
             ...state.completions,
             [habitId]: habitCompletions,
@@ -78,9 +82,9 @@ export const useCompletionStore = create(
 
     // Fetch today's completions for all habits
     fetchTodayCompletions: async (habitIds = []) => {
-      const { setLoading, setError } = get();
+      const {setLoading, setError} = get();
       const userId = auth().currentUser?.uid;
-      
+
       if (!userId) {
         setError('No authenticated user');
         return {};
@@ -89,7 +93,7 @@ export const useCompletionStore = create(
       try {
         setLoading(true);
         setError(null);
-        
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const endOfDay = new Date(today);
@@ -115,16 +119,16 @@ export const useCompletionStore = create(
           }
         }
 
-        set({ 
+        set({
           todayCompletions: todayCompletionsMap,
           lastUpdated: new Date(),
-          error: null 
+          error: null,
         });
 
         return todayCompletionsMap;
       } catch (error) {
-        console.error('Error fetching today\'s completions:', error);
-        setError(error.message || 'Failed to fetch today\'s completions');
+        console.error("Error fetching today's completions:", error);
+        setError(error.message || "Failed to fetch today's completions");
         return {};
       } finally {
         setLoading(false);
@@ -132,10 +136,16 @@ export const useCompletionStore = create(
     },
 
     // Log habit completion
-    logCompletion: async (habitId, date, value = 1, notes = '', xpEarned = 10) => {
-      const { setLoading, setError } = get();
+    logCompletion: async (
+      habitId,
+      date,
+      value = 1,
+      notes = '',
+      xpEarned = 10,
+    ) => {
+      const {setLoading, setError} = get();
       const userId = auth().currentUser?.uid;
-      
+
       if (!userId) {
         throw new Error('No authenticated user');
       }
@@ -173,13 +183,14 @@ export const useCompletionStore = create(
         // Calculate per-habit streak
         let newCurrentStreak = habitData?.currentStreak || 0;
         let bestStreak = habitData?.bestStreak || 0;
-        let lastCompletionDate = habitData?.lastCompletionDate?.toDate?.() || null;
+        let lastCompletionDate =
+          habitData?.lastCompletionDate?.toDate?.() || null;
 
         if (!lastCompletionDate) {
           newCurrentStreak = 1;
         } else {
           const diffDays = Math.floor(
-            (normalizedDate - lastCompletionDate) / (1000 * 60 * 60 * 24)
+            (normalizedDate - lastCompletionDate) / (1000 * 60 * 60 * 24),
           );
           if (diffDays === 1) {
             newCurrentStreak += 1;
@@ -204,13 +215,14 @@ export const useCompletionStore = create(
         const userData = userSnap.data();
         let globalCurrentStreak = userData?.currentGlobalStreak || 0;
         let bestGlobalStreak = userData?.bestGlobalStreak || 0;
-        let lastGlobalCompletionDate = userData?.lastGlobalCompletionDate?.toDate?.() || null;
+        let lastGlobalCompletionDate =
+          userData?.lastGlobalCompletionDate?.toDate?.() || null;
 
         if (!lastGlobalCompletionDate) {
           globalCurrentStreak = 1;
         } else {
           const diffDays = Math.floor(
-            (normalizedDate - lastGlobalCompletionDate) / (1000 * 60 * 60 * 24)
+            (normalizedDate - lastGlobalCompletionDate) / (1000 * 60 * 60 * 24),
           );
           if (diffDays === 1) {
             globalCurrentStreak += 1;
@@ -230,7 +242,8 @@ export const useCompletionStore = create(
           level: newLevel,
           currentGlobalStreak: globalCurrentStreak,
           bestGlobalStreak,
-          lastGlobalCompletionDate: firestore.Timestamp.fromDate(normalizedDate),
+          lastGlobalCompletionDate:
+            firestore.Timestamp.fromDate(normalizedDate),
         });
 
         // Update local state
@@ -244,7 +257,7 @@ export const useCompletionStore = create(
           createdAt: firestore.FieldValue.serverTimestamp(),
         };
 
-        set((state) => ({
+        set(state => ({
           completions: {
             ...state.completions,
             [habitId]: [completion, ...(state.completions[habitId] || [])],
@@ -269,9 +282,9 @@ export const useCompletionStore = create(
 
     // Delete completion
     deleteCompletion: async (habitId, completionId, xpEarned = 10) => {
-      const { setLoading, setError } = get();
+      const {setLoading, setError} = get();
       const userId = auth().currentUser?.uid;
-      
+
       if (!userId) {
         throw new Error('No authenticated user');
       }
@@ -298,11 +311,11 @@ export const useCompletionStore = create(
           });
 
         // Update local state
-        set((state) => ({
+        set(state => ({
           completions: {
             ...state.completions,
             [habitId]: (state.completions[habitId] || []).filter(
-              (comp) => comp.id !== completionId
+              comp => comp.id !== completionId,
             ),
           },
           todayCompletions: {
@@ -324,29 +337,30 @@ export const useCompletionStore = create(
     },
 
     // Check if habit is completed today
-    isCompletedToday: (habitId) => {
-      const { todayCompletions } = get();
+    isCompletedToday: habitId => {
+      const {todayCompletions} = get();
       return !!todayCompletions[habitId];
     },
 
     // Get completion count for a habit in a date range
     getCompletionCount: (habitId, startDate, endDate) => {
-      const { completions } = get();
+      const {completions} = get();
       const habitCompletions = completions[habitId] || [];
-      
-      return habitCompletions.filter((completion) => {
+
+      return habitCompletions.filter(completion => {
         const completionDate = completion.date.toDate();
         return completionDate >= startDate && completionDate <= endDate;
       }).length;
     },
 
     // Clear all completions (useful for logout)
-    clearCompletions: () => set({ 
-      completions: {}, 
-      todayCompletions: {}, 
-      lastUpdated: null, 
-      error: null 
-    }),
+    clearCompletions: () =>
+      set({
+        completions: {},
+        todayCompletions: {},
+        lastUpdated: null,
+        error: null,
+      }),
 
     // Initialize store with real-time listeners
     initializeStore: (habitIds = []) => {
@@ -356,7 +370,7 @@ export const useCompletionStore = create(
       const unsubscribers = [];
 
       // Set up real-time listeners for each habit's completions
-      habitIds.forEach((habitId) => {
+      habitIds.forEach(habitId => {
         const unsubscribe = firestore()
           .collection('users')
           .doc(userId)
@@ -364,16 +378,16 @@ export const useCompletionStore = create(
           .doc(habitId)
           .collection('completions')
           .onSnapshot(
-            (snapshot) => {
+            snapshot => {
               const habitCompletions = [];
-              snapshot.forEach((doc) => {
+              snapshot.forEach(doc => {
                 habitCompletions.push({
                   id: doc.id,
                   ...doc.data(),
                 });
               });
 
-              set((state) => ({
+              set(state => ({
                 completions: {
                   ...state.completions,
                   [habitId]: habitCompletions,
@@ -382,10 +396,10 @@ export const useCompletionStore = create(
                 error: null,
               }));
             },
-            (error) => {
+            error => {
               console.error('Error in completions listener:', error);
               setError(error.message || 'Failed to sync completions');
-            }
+            },
           );
 
         unsubscribers.push(unsubscribe);
@@ -393,6 +407,5 @@ export const useCompletionStore = create(
 
       return () => unsubscribers.forEach(unsub => unsub());
     },
-  }))
-));
-
+  })),
+);

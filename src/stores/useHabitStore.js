@@ -1,11 +1,11 @@
-import { create } from 'zustand';
-import { persist, subscribeWithSelector } from 'zustand/middleware';
+import {create} from 'zustand';
+import {subscribeWithSelector} from 'zustand/middleware';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 
 // Habit store for managing all habit-related state
 export const useHabitStore = create(
-  subscribeWithSelector(persist((set, get) => ({
+  subscribeWithSelector((set, get) => ({
     // State
     habits: [],
     loading: false,
@@ -13,18 +13,18 @@ export const useHabitStore = create(
     lastUpdated: null,
 
     // Actions
-    setLoading: (loading) => set({ loading }),
-    setError: (error) => set({ error }),
-    clearError: () => set({ error: null }),
+    setLoading: loading => set({loading}),
+    setError: error => set({error}),
+    clearError: () => set({error: null}),
 
     // Fetch habits from Firestore
     fetchHabits: async () => {
-      const { setLoading, setError } = get();
-      
+      const {setLoading, setError} = get();
+
       try {
         setLoading(true);
         setError(null);
-        
+
         const userId = auth().currentUser?.uid;
         if (!userId) {
           setError('No authenticated user');
@@ -35,10 +35,10 @@ export const useHabitStore = create(
           .collection('users')
           .doc(userId)
           .collection('habits');
-        
+
         const querySnapshot = await habitsRef.get();
         const habits = [];
-        
+
         querySnapshot.forEach(documentSnapshot => {
           habits.push({
             id: documentSnapshot.id,
@@ -46,12 +46,12 @@ export const useHabitStore = create(
           });
         });
 
-        set({ 
-          habits, 
+        set({
+          habits,
           lastUpdated: new Date(),
-          error: null 
+          error: null,
         });
-        
+
         return habits;
       } catch (error) {
         console.error('Error fetching habits:', error);
@@ -63,9 +63,9 @@ export const useHabitStore = create(
     },
 
     // Add new habit
-    addHabit: async (habitData) => {
-      const { habits, fetchHabits } = get();
-      
+    addHabit: async habitData => {
+      const {habits, fetchHabits} = get();
+
       try {
         const userId = auth().currentUser?.uid;
         if (!userId) throw new Error('User not authenticated');
@@ -87,7 +87,7 @@ export const useHabitStore = create(
 
         // Refresh habits to get the latest data
         await fetchHabits();
-        
+
         return docRef.id;
       } catch (error) {
         console.error('Error adding habit:', error);
@@ -97,8 +97,8 @@ export const useHabitStore = create(
 
     // Update habit
     updateHabit: async (habitId, updatedData) => {
-      const { habits, fetchHabits } = get();
-      
+      const {habits, fetchHabits} = get();
+
       try {
         const userId = auth().currentUser?.uid;
         if (!userId) throw new Error('User not authenticated');
@@ -115,7 +115,7 @@ export const useHabitStore = create(
 
         // Refresh habits to get the latest data
         await fetchHabits();
-        
+
         return true;
       } catch (error) {
         console.error('Error updating habit:', error);
@@ -124,9 +124,9 @@ export const useHabitStore = create(
     },
 
     // Delete habit
-    deleteHabit: async (habitId) => {
-      const { habits, fetchHabits } = get();
-      
+    deleteHabit: async habitId => {
+      const {habits, fetchHabits} = get();
+
       try {
         const userId = auth().currentUser?.uid;
         if (!userId) throw new Error('User not authenticated');
@@ -140,7 +140,7 @@ export const useHabitStore = create(
 
         // Refresh habits to get the latest data
         await fetchHabits();
-        
+
         return true;
       } catch (error) {
         console.error('Error deleting habit:', error);
@@ -150,41 +150,41 @@ export const useHabitStore = create(
 
     // Toggle habit status
     toggleHabitStatus: async (habitId, newStatus) => {
-      return get().updateHabit(habitId, { isActive: newStatus === 'active' });
+      return get().updateHabit(habitId, {isActive: newStatus === 'active'});
     },
 
     // Get habit by ID
-    getHabitById: (habitId) => {
-      const { habits } = get();
+    getHabitById: habitId => {
+      const {habits} = get();
       return habits.find(habit => habit.id === habitId);
     },
 
     // Get active habits
     getActiveHabits: () => {
-      const { habits } = get();
+      const {habits} = get();
       return habits.filter(habit => habit.isActive);
     },
 
     // Get habits by type
-    getHabitsByType: (type) => {
-      const { habits } = get();
+    getHabitsByType: type => {
+      const {habits} = get();
       return habits.filter(habit => habit.type === type);
     },
 
     // Get total habits count
     getTotalHabitsCount: () => {
-      const { habits } = get();
+      const {habits} = get();
       return habits.length;
     },
 
     // Get active habits count
     getActiveHabitsCount: () => {
-      const { habits } = get();
+      const {habits} = get();
       return habits.filter(habit => habit.isActive).length;
     },
 
     // Clear all habits (useful for logout)
-    clearHabits: () => set({ habits: [], lastUpdated: null, error: null }),
+    clearHabits: () => set({habits: [], lastUpdated: null, error: null}),
 
     // Initialize store with real-time listener
     initializeStore: () => {
@@ -198,7 +198,7 @@ export const useHabitStore = create(
         .collection('habits')
         .orderBy('createdAt', 'asc')
         .onSnapshot(
-          (querySnapshot) => {
+          querySnapshot => {
             const habits = [];
             querySnapshot.forEach(documentSnapshot => {
               habits.push({
@@ -206,22 +206,20 @@ export const useHabitStore = create(
                 ...documentSnapshot.data(),
               });
             });
-            
-            set({ 
-              habits, 
+
+            set({
+              habits,
               lastUpdated: new Date(),
-              error: null 
+              error: null,
             });
           },
-          (error) => {
+          error => {
             console.error('Error in habits listener:', error);
             setError(error.message || 'Failed to sync habits');
-          }
+          },
         );
 
       return unsubscribe;
     },
-  }))
-));
-
-
+  })),
+);

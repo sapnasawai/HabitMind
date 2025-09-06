@@ -1,18 +1,18 @@
-import { create } from 'zustand';
-import { persist, subscribeWithSelector } from 'zustand/middleware';
+import {create} from 'zustand';
+import {subscribeWithSelector} from 'zustand/middleware';
 
 // Progress store for derived data and statistics
 export const useProgressStore = create(
-  subscribeWithSelector(persist((set, get) => ({
+  subscribeWithSelector((set, get) => ({
     // State
     loading: false,
     error: null,
     lastUpdated: null,
 
     // Actions
-    setLoading: (loading) => set({ loading }),
-    setError: (error) => set({ error }),
-    clearError: () => set({ error: null }),
+    setLoading: loading => set({loading}),
+    setError: error => set({error}),
+    clearError: () => set({error: null}),
 
     // Get habits with completion status for today
     getHabitsWithCompletions: (habits, todayCompletions) => {
@@ -30,31 +30,43 @@ export const useProgressStore = create(
       const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
       // Calculate today's completions
-      const completedToday = habits.filter(habit => 
+      const completedToday = habits.filter(habit =>
         completions[habit.id]?.some(completion => {
           const completionDate = completion.date.toDate();
           return completionDate.toDateString() === today.toDateString();
-        })
+        }),
       ).length;
 
       // Calculate monthly completion rate
       const totalPossibleCompletions = habits.length * endOfMonth.getDate();
       const actualCompletions = habits.reduce((total, habit) => {
         const habitCompletions = completions[habit.id] || [];
-        return total + habitCompletions.filter(completion => {
-          const completionDate = completion.date.toDate();
-          return completionDate >= startOfMonth && completionDate <= endOfMonth;
-        }).length;
+        return (
+          total +
+          habitCompletions.filter(completion => {
+            const completionDate = completion.date.toDate();
+            return (
+              completionDate >= startOfMonth && completionDate <= endOfMonth
+            );
+          }).length
+        );
       }, 0);
 
-      const monthlyCompletionRate = totalPossibleCompletions > 0 
-        ? Math.round((actualCompletions / totalPossibleCompletions) * 100)
-        : 0;
+      const monthlyCompletionRate =
+        totalPossibleCompletions > 0
+          ? Math.round((actualCompletions / totalPossibleCompletions) * 100)
+          : 0;
 
       // Calculate average streak
-      const averageStreak = habits.length > 0
-        ? Math.round(habits.reduce((sum, habit) => sum + (habit.currentStreak || 0), 0) / habits.length)
-        : 0;
+      const averageStreak =
+        habits.length > 0
+          ? Math.round(
+              habits.reduce(
+                (sum, habit) => sum + (habit.currentStreak || 0),
+                0,
+              ) / habits.length,
+            )
+          : 0;
 
       return {
         completedToday,
@@ -82,7 +94,9 @@ export const useProgressStore = create(
       });
 
       const daysInMonth = endOfMonth.getDate();
-      const completionRate = Math.round((monthlyCompletions.length / daysInMonth) * 100);
+      const completionRate = Math.round(
+        (monthlyCompletions.length / daysInMonth) * 100,
+      );
 
       return {
         totalCompletions: habitCompletions.length,
@@ -110,7 +124,7 @@ export const useProgressStore = create(
           const completionDate = completion.date.toDate();
           return completionDate.toDateString() === date.toDateString();
         });
-        
+
         calendarData.push({
           day,
           date,
@@ -123,9 +137,10 @@ export const useProgressStore = create(
     },
 
     // Clear all data (useful for logout)
-    clearAllData: () => set({ 
-      lastUpdated: null, 
-      error: null 
-    }),
-  }))
-));
+    clearAllData: () =>
+      set({
+        lastUpdated: null,
+        error: null,
+      }),
+  })),
+);
