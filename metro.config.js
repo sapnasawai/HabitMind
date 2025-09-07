@@ -6,7 +6,7 @@ const { withNativeWind } = require('nativewind/metro');
  * Metro configuration
  * https://reactnative.dev/docs/metro
  *
- * @type {import('metro-config').MetroConfig}
+ * @type {import('@react-native/metro-config').MetroConfig}
  */
 const defaultConfig = getDefaultConfig(__dirname);
 const config = {};

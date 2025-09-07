@@ -15,6 +15,11 @@ export default function App() {
   const [initializing, setInitializing] = React.useState(true);
   const [splashDurationComplete, setSplashDurationComplete] =
     React.useState(false);
+  const handleAuthStateChanged = React.useCallback((user: any) => {
+    setUser(user);
+    if (initializing) setInitializing(false);
+  }, [initializing]);
+
   // Initialize stores when user changes
   useAppInitialization(user);
   React.useEffect(() => {
@@ -27,7 +32,7 @@ export default function App() {
   React.useEffect(() => {
     const subscriber = onAuthStateChanged(getAuth(), handleAuthStateChanged);
     return subscriber; // unsubscribe on unmount
-  }, []);
+  }, [handleAuthStateChanged]);
 
   React.useEffect(() => {
     GoogleSignin.configure({
@@ -36,13 +41,8 @@ export default function App() {
       offlineAccess: true,
     });
   }, []);
-
-  function handleAuthStateChanged(user: any) {
-    setUser(user);
-    if (initializing) setInitializing(false);
-  }
-  const isAuthenticatedAndVerified = (user: any) => {
-    return user !== null && user !== undefined && user.emailVerified;
+  const isAuthenticatedAndVerified = (userToCheck: any) => {
+    return userToCheck !== null && userToCheck !== undefined && userToCheck.emailVerified;
   };
 
   React.useEffect(() => {
