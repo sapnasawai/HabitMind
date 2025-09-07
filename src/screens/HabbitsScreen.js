@@ -209,8 +209,7 @@ const HabbitsScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 p-4">
-      <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-3xl font-bold text-gray-800">Today's Habits</Text>
+      <View className="flex-row justify-end items-center mb-4">
         <TouchableOpacity
           onPress={() => navigation.navigate('AddHabit')}
           className="bg-violet-400 px-4 py-2 rounded-md flex-row items-center space-x-1">

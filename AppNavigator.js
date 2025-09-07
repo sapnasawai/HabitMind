@@ -6,7 +6,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import HabbitsScreen from './src/screens/HabbitsScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -54,11 +54,9 @@ function BottomTabRootStack({user}) {
         component={ProgressScreen}
         options={{title: 'Overall Progress'}}
       />
-      <Tab.Screen
-        name="Profile"
-        component={props => <ProfileScreen {...props} user={user} />}
-        options={{title: 'Profile'}}
-      />
+      <Tab.Screen name="Profile" options={{title: 'Profile'}}>
+        {props => <ProfileScreen {...props} user={user} />}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -79,9 +77,10 @@ const AppNavigator = ({user}) => {
         options={{
           headerShown: false,
           contentStyle: {backgroundColor: 'white'},
-        }}
-        component={props => <BottomTabRootStack {...props} user={user} />}
-      />
+        }}>
+        {props => <BottomTabRootStack {...props} user={user} />}
+      </Stack.Screen>
+
       <Stack.Screen
         name="AddHabit"
         component={AddHabitScreen}
