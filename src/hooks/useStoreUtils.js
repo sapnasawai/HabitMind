@@ -47,7 +47,7 @@ export const useUserStats = () => {
     const totalHabits = habits.length;
     const completedToday = Object.keys(completions).filter(habitId => 
       completions[habitId]?.some(comp => {
-        const compDate = comp.date.toDate();
+        const compDate = comp.date.toDate ? comp.date.toDate() : comp.date;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return compDate >= today;
@@ -105,7 +105,9 @@ export const useHabitStats = (habitId) => {
     const weeklyCompletionRate = (weekCompletions / 7) * 100;
 
     // Convert completions to Date objects for CalendarGrid
-    const completionsAsDates = habitCompletions.map(comp => comp.date.toDate());
+    const completionsAsDates = habitCompletions.map(comp => 
+      comp.date.toDate ? comp.date.toDate() : comp.date
+    );
 
     return {
       totalCompletions,
@@ -132,7 +134,11 @@ export const useCompletionData = (habitId, startDate, endDate) => {
     return habitCompletions.filter((comp) => {
       const compDate = comp.date.toDate();
       return compDate >= startDate && compDate <= endDate;
-    }).sort((a, b) => a.date.toDate() - b.date.toDate());
+    }).sort((a, b) => {
+      const dateA = a.date.toDate ? a.date.toDate() : a.date;
+      const dateB = b.date.toDate ? b.date.toDate() : b.date;
+      return dateA - dateB;
+    });
   }, [habitCompletions, startDate, endDate]);
 };
 

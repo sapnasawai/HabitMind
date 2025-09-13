@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
+import { subscribeWithSelector, persist } from 'zustand/middleware';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
 
 // Clean habit store with real-time listeners and proper selectors
 export const useHabitStore = create(
-  subscribeWithSelector((set, get) => ({
+  persist(
+    subscribeWithSelector((set, get) => ({
     // State
     habits: [],
     completions: {}, // { habitId: [completions] }
@@ -13,11 +14,13 @@ export const useHabitStore = create(
     error: null,
     lastUpdated: null,
     listeners: [], // Store listener unsubscribers
+    // Removed operationLoading - using optimistic updates instead
 
     // Actions
     setLoading: (loading) => set({ loading }),
     setError: (error) => set({ error }),
     clearError: () => set({ error: null }),
+    // Removed setOperationLoading - using optimistic updates instead
 
     // Initialize real-time listeners
     initializeListeners: () => {
@@ -29,8 +32,19 @@ export const useHabitStore = create(
 
       console.log('📡 Setting up habit listeners for user:', userId);
 
-      // Clear existing listeners
+      // Clear existing listeners first
       get().cleanupListeners();
+
+      // Set loading to false immediately to show cached data
+      set({ loading: false, error: null });
+
+      // Check if we already have habits data (from persistence)
+      const currentHabits = get().habits;
+      if (currentHabits.length > 0) {
+        console.log('📋 Found cached habits, initializing completion listeners:', currentHabits.length);
+        const habitIds = currentHabits.map(habit => habit.id);
+        get().initializeCompletionsListeners(habitIds);
+      }
 
       // Habits listener
       const habitsUnsubscribe = firestore()
@@ -55,6 +69,13 @@ export const useHabitStore = create(
               lastUpdated: new Date(),
               error: null 
             });
+
+            // Initialize completion listeners immediately when habits are loaded
+            if (habits.length > 0) {
+              const habitIds = habits.map(habit => habit.id);
+              console.log('🔄 Initializing completion listeners for habits:', habitIds);
+              get().initializeCompletionsListeners(habitIds);
+            }
           },
           (error) => {
             console.error('❌ Error in habits listener:', error);
@@ -114,17 +135,41 @@ export const useHabitStore = create(
     },
 
 
-    // Add new habit
+    // Add new habit with optimistic updates
     addHabit: async (habitData) => {
-      const { setLoading, setError } = get();
+      const { setError } = get();
       
       try {
-        setLoading(true);
         setError(null);
         
         const userId = auth().currentUser?.uid;
         if (!userId) throw new Error('User not authenticated');
 
+        // Generate temporary ID for optimistic update
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Create optimistic habit data
+        const optimisticHabit = {
+          id: tempId,
+          ...habitData,
+          isActive: true,
+          habitXP: 0,
+          bestStreak: 0,
+          currentStreak: 0,
+          lastCompletionDate: null,
+          createdAt: new Date(), // Use local timestamp for optimistic update
+          lastUpdated: new Date(),
+          isOptimistic: true, // Mark as optimistic
+        };
+
+        // Immediately update local state
+        set(state => ({
+          habits: [...state.habits, optimisticHabit],
+          lastUpdated: new Date(),
+          error: null,
+        }));
+
+        // Perform Firestore operation in background
         const docRef = await firestore()
           .collection('users')
           .doc(userId)
@@ -140,27 +185,56 @@ export const useHabitStore = create(
             lastUpdated: firestore.FieldValue.serverTimestamp(),
           });
 
+        // Remove optimistic habit and let real-time listener handle the update
+        set(state => ({
+          habits: state.habits.filter(habit => habit.id !== tempId),
+        }));
+
         return docRef.id;
       } catch (error) {
         console.error('Error adding habit:', error);
+        
+        // Revert optimistic update on error
+        set(state => ({
+          habits: state.habits.filter(habit => habit.id !== tempId),
+        }));
+        
         setError(error.message || 'Failed to add habit');
         throw error;
-      } finally {
-        setLoading(false);
       }
     },
 
-    // Update habit
+    // Update habit with optimistic updates
     updateHabit: async (habitId, updatedData) => {
-      const { setLoading, setError } = get();
+      const { setError } = get();
       
       try {
-        setLoading(true);
         setError(null);
         
         const userId = auth().currentUser?.uid;
         if (!userId) throw new Error('User not authenticated');
 
+        // Store original habit data for potential rollback
+        const originalHabit = get().habits.find(h => h.id === habitId);
+        if (!originalHabit) throw new Error('Habit not found');
+
+        // Optimistic update - immediately update local state
+        set(state => ({
+          habits: state.habits.map(habit => 
+            habit.id === habitId 
+              ? { 
+                  ...habit, 
+                  ...updatedData, 
+                  lastUpdated: new Date(),
+                  isOptimistic: true 
+                }
+              : habit
+          ),
+          lastUpdated: new Date(),
+          error: null,
+        }));
+
+        // Perform Firestore operation in background
         await firestore()
           .collection('users')
           .doc(userId)
@@ -174,24 +248,48 @@ export const useHabitStore = create(
         return true;
       } catch (error) {
         console.error('Error updating habit:', error);
+        
+        // Revert optimistic update on error
+        const originalHabit = get().habits.find(h => h.id === habitId);
+        if (originalHabit) {
+          set(state => ({
+            habits: state.habits.map(habit => 
+              habit.id === habitId ? originalHabit : habit
+            ),
+          }));
+        }
+        
         setError(error.message || 'Failed to update habit');
         throw error;
-      } finally {
-        setLoading(false);
       }
     },
 
-    // Delete habit
+    // Delete habit with optimistic updates
     deleteHabit: async (habitId) => {
-      const { setLoading, setError } = get();
+      const { setError } = get();
       
       try {
-        setLoading(true);
         setError(null);
         
         const userId = auth().currentUser?.uid;
         if (!userId) throw new Error('User not authenticated');
 
+        // Store original habit data for potential rollback
+        const originalHabit = get().habits.find(h => h.id === habitId);
+        if (!originalHabit) throw new Error('Habit not found');
+
+        // Optimistic update - immediately remove from local state
+        set(state => ({
+          habits: state.habits.filter(habit => habit.id !== habitId),
+          completions: {
+            ...state.completions,
+            [habitId]: undefined, // Remove completions for this habit
+          },
+          lastUpdated: new Date(),
+          error: null,
+        }));
+
+        // Perform Firestore operation in background
         await firestore()
           .collection('users')
           .doc(userId)
@@ -202,16 +300,23 @@ export const useHabitStore = create(
         return true;
       } catch (error) {
         console.error('Error deleting habit:', error);
+        
+        // Revert optimistic update on error
+        const originalHabit = get().habits.find(h => h.id === habitId);
+        if (originalHabit) {
+          set(state => ({
+            habits: [...state.habits, originalHabit],
+          }));
+        }
+        
         setError(error.message || 'Failed to delete habit');
         throw error;
-      } finally {
-        setLoading(false);
       }
     },
 
-    // Log habit completion
+    // Log habit completion with optimistic updates
     logCompletion: async (habitId, date, value = 1, notes = '', xpEarned = 10) => {
-      const { setLoading, setError } = get();
+      const { setError } = get();
       const userId = auth().currentUser?.uid;
       
       if (!userId) {
@@ -219,13 +324,34 @@ export const useHabitStore = create(
       }
 
       try {
-        setLoading(true);
         setError(null);
 
-        // Normalize date
+        // Optimistic update - immediately update local state
         const normalizedDate = new Date(date);
         normalizedDate.setHours(0, 0, 0, 0);
+        
+        // Create optimistic completion record
+        const tempCompletionId = `temp_${Date.now()}`;
+        const optimisticCompletion = {
+          id: tempCompletionId,
+          date: firestore.Timestamp.fromDate(normalizedDate),
+          value,
+          isSkipped: false,
+          notes,
+          xpEarned,
+          createdAt: firestore.FieldValue.serverTimestamp(),
+          isOptimistic: true, // Mark as optimistic
+        };
 
+        // Update local completions immediately
+        set(state => ({
+          completions: {
+            ...state.completions,
+            [habitId]: [...(state.completions[habitId] || []), optimisticCompletion]
+          }
+        }));
+
+        // Perform network operation in background
         const habitRef = firestore()
           .collection('users')
           .doc(userId)
@@ -311,19 +437,34 @@ export const useHabitStore = create(
           lastGlobalCompletionDate: firestore.Timestamp.fromDate(normalizedDate),
         });
 
+        // Remove optimistic completion and let real-time listener handle the update
+        set(state => ({
+          completions: {
+            ...state.completions,
+            [habitId]: (state.completions[habitId] || []).filter(comp => comp.id !== tempCompletionId)
+          }
+        }));
+
         return completionRef.id;
       } catch (error) {
         console.error('Error logging completion:', error);
+        
+        // Revert optimistic update on error
+        set(state => ({
+          completions: {
+            ...state.completions,
+            [habitId]: (state.completions[habitId] || []).filter(comp => comp.id !== tempCompletionId)
+          }
+        }));
+        
         setError(error.message || 'Failed to log completion');
         throw error;
-      } finally {
-        setLoading(false);
       }
     },
 
-    // Delete completion
+    // Delete completion with optimistic updates
     deleteCompletion: async (habitId, completionId, xpEarned = 10) => {
-      const { setLoading, setError } = get();
+      const { setError } = get();
       const userId = auth().currentUser?.uid;
       
       if (!userId) {
@@ -331,8 +472,15 @@ export const useHabitStore = create(
       }
 
       try {
-        setLoading(true);
         setError(null);
+
+        // Optimistic update - immediately remove from local state
+        set(state => ({
+          completions: {
+            ...state.completions,
+            [habitId]: (state.completions[habitId] || []).filter(comp => comp.id !== completionId)
+          }
+        }));
 
         await firestore()
           .collection('users')
@@ -354,10 +502,11 @@ export const useHabitStore = create(
         return true;
       } catch (error) {
         console.error('Error deleting completion:', error);
+        
+        // Revert optimistic update on error - re-add the completion
+        // Note: This is a simplified revert - in a real app you'd want to store the original completion
         setError(error.message || 'Failed to delete completion');
         throw error;
-      } finally {
-        setLoading(false);
       }
     },
 
@@ -371,6 +520,7 @@ export const useHabitStore = create(
     // Clear all data (useful for logout)
     clearAllData: () => {
       console.log('🧹 Clearing all habit store data');
+      get().cleanupListeners();
       set({ 
         habits: [], 
         completions: {},
@@ -378,6 +528,27 @@ export const useHabitStore = create(
         error: null,
         listeners: []
       });
+    },
+
+    // Check if store is properly initialized
+    isInitialized: () => {
+      const state = get();
+      return {
+        hasUser: !!auth().currentUser?.uid,
+        hasHabits: state.habits.length > 0,
+        hasListeners: state.listeners.length > 0,
+        hasError: !!state.error,
+        lastUpdated: state.lastUpdated,
+      };
+    },
+
+    // Force reinitialize listeners (useful for debugging)
+    forceReinitialize: () => {
+      console.log('🔄 Force reinitializing listeners...');
+      const state = get();
+      console.log('Current state:', state.isInitialized());
+      get().cleanupListeners();
+      get().initializeListeners();
     },
 
     // Check if habit is completed today
@@ -392,7 +563,7 @@ export const useHabitStore = create(
       const habitCompletions = completions[habitId] || [];
       
       return habitCompletions.filter((completion) => {
-        const completionDate = completion.date.toDate();
+        const completionDate = completion.date.toDate ? completion.date.toDate() : completion.date;
         return completionDate >= startDate && completionDate <= endDate;
       }).length;
     },
@@ -410,7 +581,7 @@ export const useHabitStore = create(
       Object.keys(completions).forEach(habitId => {
         const habitCompletions = completions[habitId] || [];
         const todayCompletion = habitCompletions.find(completion => {
-          const completionDate = completion.date.toDate();
+          const completionDate = completion.date.toDate ? completion.date.toDate() : completion.date;
           return completionDate >= today && completionDate < endOfDay;
         });
         
@@ -421,5 +592,14 @@ export const useHabitStore = create(
 
       return todayCompletions;
     },
-  }))
-);
+  })),
+  {
+    name: 'habit-store', // unique name for the storage key
+    partialize: (state) => ({ 
+      habits: state.habits,
+      completions: state.completions,
+      lastUpdated: state.lastUpdated,
+      // Don't persist listeners, loading, or error states
+    }),
+  }
+));

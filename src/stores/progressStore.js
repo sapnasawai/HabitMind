@@ -32,7 +32,7 @@ export const useProgressStore = create(
       // Calculate today's completions
       const completedToday = habits.filter(habit =>
         completions[habit.id]?.some(completion => {
-          const completionDate = completion.date.toDate();
+          const completionDate = completion.date.toDate ? completion.date.toDate() : completion.date;
           return completionDate.toDateString() === today.toDateString();
         }),
       ).length;
@@ -44,7 +44,7 @@ export const useProgressStore = create(
         return (
           total +
           habitCompletions.filter(completion => {
-            const completionDate = completion.date.toDate();
+            const completionDate = completion.date.toDate ? completion.date.toDate() : completion.date;
             return (
               completionDate >= startOfMonth && completionDate <= endOfMonth
             );
@@ -89,7 +89,7 @@ export const useProgressStore = create(
 
       // Filter completions for this month
       const monthlyCompletions = habitCompletions.filter(completion => {
-        const completionDate = completion.date.toDate();
+        const completionDate = completion.date.toDate ? completion.date.toDate() : completion.date;
         return completionDate >= startOfMonth && completionDate <= endOfMonth;
       });
 
@@ -103,7 +103,7 @@ export const useProgressStore = create(
         monthlyCompletions: monthlyCompletions.length,
         completionRate,
         isCompletedToday: habitCompletions.some(completion => {
-          const completionDate = completion.date.toDate();
+          const completionDate = completion.date.toDate ? completion.date.toDate() : completion.date;
           return completionDate.toDateString() === today.toDateString();
         }),
       };
@@ -121,7 +121,7 @@ export const useProgressStore = create(
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(year, month, day);
         const isCompleted = habitCompletions.some(completion => {
-          const completionDate = completion.date.toDate();
+          const completionDate = completion.date.toDate ? completion.date.toDate() : completion.date;
           return completionDate.toDateString() === date.toDateString();
         });
 

@@ -20,22 +20,25 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
-// import { useHabitStore } from '../../stores';
 import { ICON_OPTIONS, IconComponents } from '../../ReadData';
 import { useHabitStore } from '../stores';
 
 const AddHabitScreen = ({ route }) => {
   const navigation = useNavigation();
   const { habitToEdit } = route.params || {};
-  
+
   // Use Zustand store instead of manual Firestore calls
   const { addHabit, updateHabit, loading: storeLoading } = useHabitStore();
-  
+
   const [name, setName] = useState(habitToEdit?.name || '');
-  const [description, setDescription] = useState(habitToEdit?.description || '');
+  const [description, setDescription] = useState(
+    habitToEdit?.description || '',
+  );
   const [time, setTime] = useState(new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const [reminder, setReminder] = useState(habitToEdit?.reminder?.enabled || false);
+  const [reminder, setReminder] = useState(
+    habitToEdit?.reminder?.enabled || false,
+  );
 
   // Icon states
   const [selectedIcon, setSelectedIcon] = useState({
@@ -46,8 +49,12 @@ const AddHabitScreen = ({ route }) => {
   const [loading, setLoading] = useState(false);
 
   // Frequency states
-  const [frequencyType, setFrequencyType] = useState(habitToEdit?.frequencyType || 'daily');
-  const [selectedDays, setSelectedDays] = useState(habitToEdit?.frequency || []);
+  const [frequencyType, setFrequencyType] = useState(
+    habitToEdit?.frequencyType || 'daily',
+  );
+  const [selectedDays, setSelectedDays] = useState(
+    habitToEdit?.frequency || [],
+  );
   const DAYS_OF_WEEK = [
     'Sunday',
     'Monday',
@@ -115,7 +122,7 @@ const AddHabitScreen = ({ route }) => {
       };
 
       console.log('Saving habit:', habitData);
-      
+
       if (habitToEdit) {
         // Update existing habit
         await updateHabit(habitToEdit.id, habitData);
@@ -169,7 +176,8 @@ const AddHabitScreen = ({ route }) => {
         onPress={() => {
           setSelectedIcon({ name: item.name, family: item.family });
           setIsIconPickerVisible(false); // Close modal on selection
-        }}>
+        }}
+      >
         <CurrentIconComponent
           name={item.name}
           size={30}
@@ -178,7 +186,8 @@ const AddHabitScreen = ({ route }) => {
         <Text
           className={`text-xs mt-1 text-center ${
             isSelected ? 'text-white' : 'text-gray-700'
-          }`}>
+          }`}
+        >
           {item.label}
         </Text>
       </TouchableOpacity>
@@ -193,7 +202,8 @@ const AddHabitScreen = ({ route }) => {
         {/* KeyboardAvoidingView to adjust content when keyboard appears */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          className="flex-1">
+          className="flex-1"
+        >
           <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20 }}>
             <Text className="text-3xl font-bold text-gray-800 text-center mb-7">
               {habitToEdit ? 'Edit Habit' : 'Add New Habit'}
@@ -236,11 +246,13 @@ const AddHabitScreen = ({ route }) => {
                 onPress={() => {
                   setFrequencyType('daily');
                   setSelectedDays([]); // Clear specific days if daily is chosen
-                }}>
+                }}
+              >
                 <Text
                   className={`text-base font-semibold ${
                     frequencyType === 'daily' ? 'text-white' : 'text-violet-600'
-                  }`}>
+                  }`}
+                >
                   Daily
                 </Text>
               </TouchableOpacity>
@@ -248,13 +260,15 @@ const AddHabitScreen = ({ route }) => {
                 className={`flex-1 py-2 rounded-md items-center ${
                   frequencyType === 'specific_days' ? 'bg-violet-500' : ''
                 }`}
-                onPress={() => setFrequencyType('specific_days')}>
+                onPress={() => setFrequencyType('specific_days')}
+              >
                 <Text
                   className={`text-base font-semibold ${
                     frequencyType === 'specific_days'
                       ? 'text-white'
                       : 'text-violet-600'
-                  }`}>
+                  }`}
+                >
                   Specific Days
                 </Text>
               </TouchableOpacity>
@@ -271,13 +285,15 @@ const AddHabitScreen = ({ route }) => {
                                             ? 'bg-violet-500 border-violet-500'
                                             : 'border-gray-400'
                                         }`}
-                    onPress={() => toggleDay(day)}>
+                    onPress={() => toggleDay(day)}
+                  >
                     <Text
                       className={`text-xs font-bold ${
                         selectedDays.includes(day)
                           ? 'text-white'
                           : 'text-gray-700'
-                      }`}>
+                      }`}
+                    >
                       {day.substring(0, 3)}{' '}
                       {/* Display short form like Sun, Mon */}
                     </Text>
@@ -306,7 +322,8 @@ const AddHabitScreen = ({ route }) => {
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowTimePicker(true)}
-                  className="flex-row items-center justify-between border border-purple-400 rounded-lg px-4 py-3 bg-white mb-5">
+                  className="flex-row items-center justify-between border border-purple-400 rounded-lg px-4 py-3 bg-white mb-5"
+                >
                   <Text className="text-base text-gray-800">
                     {format(time, 'h:mm a')}
                   </Text>
@@ -329,7 +346,8 @@ const AddHabitScreen = ({ route }) => {
             </Text>
             <TouchableOpacity
               className="flex-row items-center justify-between border border-purple-400 rounded-lg px-4 py-3 bg-white mb-5"
-              onPress={() => setIsIconPickerVisible(true)}>
+              onPress={() => setIsIconPickerVisible(true)}
+            >
               {DisplayIconComponent && (
                 <DisplayIconComponent
                   name={selectedIcon.name}
@@ -354,7 +372,8 @@ const AddHabitScreen = ({ route }) => {
             <TouchableOpacity
               className="bg-violet-500 py-4 rounded-lg shadow-md items-center justify-center mb-5"
               onPress={handleSave}
-              disabled={loading || storeLoading}>
+              disabled={loading || storeLoading}
+            >
               {loading || storeLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -368,7 +387,8 @@ const AddHabitScreen = ({ route }) => {
             animationType="slide"
             transparent={true}
             visible={isIconPickerVisible}
-            onRequestClose={() => setIsIconPickerVisible(false)}>
+            onRequestClose={() => setIsIconPickerVisible(false)}
+          >
             <View className="flex-1 justify-center items-center bg-black/50">
               <View className="bg-white rounded-xl p-6 w-4/5 max-h-3/5 shadow-xl">
                 <Text className="text-2xl font-bold text-gray-800 mb-5 text-center">
@@ -386,7 +406,8 @@ const AddHabitScreen = ({ route }) => {
                 />
                 <TouchableOpacity
                   className="bg-gray-400 py-3 rounded-lg items-center mt-5"
-                  onPress={() => setIsIconPickerVisible(false)}>
+                  onPress={() => setIsIconPickerVisible(false)}
+                >
                   <Text className="text-gray-800 text-base font-semibold">
                     Close
                   </Text>

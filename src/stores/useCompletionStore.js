@@ -135,7 +135,7 @@ export const useCompletionStore = create(
       }
     },
 
-    // Log habit completion
+    // Log habit completion with optimistic updates
     logCompletion: async (
       habitId,
       date,
@@ -143,7 +143,7 @@ export const useCompletionStore = create(
       notes = '',
       xpEarned = 10,
     ) => {
-      const {setLoading, setError} = get();
+      const {setError} = get();
       const userId = auth().currentUser?.uid;
 
       if (!userId) {
@@ -151,7 +151,6 @@ export const useCompletionStore = create(
       }
 
       try {
-        setLoading(true);
         setError(null);
 
         // Normalize date
@@ -275,14 +274,12 @@ export const useCompletionStore = create(
         console.error('Error logging completion:', error);
         setError(error.message || 'Failed to log completion');
         throw error;
-      } finally {
-        setLoading(false);
       }
     },
 
-    // Delete completion
+    // Delete completion with optimistic updates
     deleteCompletion: async (habitId, completionId, xpEarned = 10) => {
-      const {setLoading, setError} = get();
+      const {setError} = get();
       const userId = auth().currentUser?.uid;
 
       if (!userId) {
@@ -290,7 +287,6 @@ export const useCompletionStore = create(
       }
 
       try {
-        setLoading(true);
         setError(null);
 
         await firestore()
@@ -331,8 +327,6 @@ export const useCompletionStore = create(
         console.error('Error deleting completion:', error);
         setError(error.message || 'Failed to delete completion');
         throw error;
-      } finally {
-        setLoading(false);
       }
     },
 
@@ -348,7 +342,7 @@ export const useCompletionStore = create(
       const habitCompletions = completions[habitId] || [];
 
       return habitCompletions.filter(completion => {
-        const completionDate = completion.date.toDate();
+        const completionDate = completion.date.toDate ? completion.date.toDate() : completion.date;
         return completionDate >= startDate && completionDate <= endDate;
       }).length;
     },

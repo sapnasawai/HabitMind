@@ -5,7 +5,7 @@ import { useHabitStore, useUserStore } from '../stores';
 // Simple initialization hook that doesn't cause re-renders
 export const useAppInitialization = (user) => {
   const initializedRef = useRef(false);
-  const { initializeListeners, initializeCompletionsListeners, clearAllData } = useHabitStore();
+  const { initializeListeners, clearAllData, isInitialized, forceReinitialize } = useHabitStore();
   const { setUser, fetchUserProfile, clearUserData } = useUserStore();
 
   useEffect(() => {
@@ -27,21 +27,15 @@ export const useAppInitialization = (user) => {
           console.log('📡 Initializing habit listeners...');
           initializeListeners();
           
-          // Wait a bit for habits to load, then initialize completions
+          // Check initialization status after a short delay
           setTimeout(() => {
-            const habits = useHabitStore.getState().habits;
-            console.log('📋 Current habits count:', habits.length);
-            
-            if (habits.length > 0) {
-              const habitIds = habits.map(habit => habit.id);
-              console.log('🔄 Initializing completion listeners for habits:', habitIds);
-              
-              // Initialize completion listeners
-              initializeCompletionsListeners(habitIds);
-            } else {
-              console.log('⚠️ No habits found, skipping completion listeners');
+            const status = isInitialized();
+            console.log('📊 Initialization status:', status);
+            if (!status.hasListeners && status.hasUser) {
+              console.log('⚠️ Listeners not initialized, forcing reinitialize...');
+              forceReinitialize();
             }
-          }, 1000); // Wait 1 second for habits to load
+          }, 2000);
           
         } catch (error) {
           console.error('❌ Error during app initialization:', error);
