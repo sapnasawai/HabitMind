@@ -126,6 +126,7 @@ const HabbitsScreen = () => {
             className="w-full"
           >
             <MotiView
+              key={showModal ? 'modal-open' : 'modal-closed'}
               from={{
                 scale: 0.8,
                 opacity: 0,
@@ -149,7 +150,7 @@ const HabbitsScreen = () => {
                 {/* Multiple ripple waves around checkmark */}
                 {[...Array(4).keys()].map(index => (
                   <MotiView
-                    key={index}
+                    key={`ripple-${index}-${showModal}`}
                     from={{
                       scale: 0.5,
                       opacity: 0.7,
@@ -177,6 +178,7 @@ const HabbitsScreen = () => {
 
                 {/* Main checkmark with pop animation */}
                 <MotiView
+                  key={`checkmark-${showModal}`}
                   from={{
                     scale: 0,
                     rotate: '0deg',
@@ -199,6 +201,7 @@ const HabbitsScreen = () => {
 
               {/* Main title */}
               <MotiText
+                key={`title-${showModal}`}
                 from={{
                   opacity: 0,
                   translateY: 20,
@@ -239,6 +242,7 @@ const HabbitsScreen = () => {
 
               {/* Encouragement message */}
               <MotiText
+                key={`message-${showModal}`}
                 from={{
                   opacity: 0,
                   translateY: 15,
@@ -252,7 +256,7 @@ const HabbitsScreen = () => {
                   duration: 500,
                   delay: 800,
                 }}
-                className="text-base text-gray-600 text-center"
+                className="text-base text-gray-600 text-center mb-6"
               >
                 Keep up the amazing streak! 💪
               </MotiText>
