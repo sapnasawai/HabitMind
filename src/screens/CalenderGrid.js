@@ -1,7 +1,6 @@
 import React, {useState} from 'react';
 import {Text, View, TouchableOpacity} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {useHabitStore} from '../stores';
 
 export const CalendarGrid = ({completions}) => {
   const today = new Date();
@@ -38,6 +37,19 @@ export const CalendarGrid = ({completions}) => {
   for (let i = 1; i <= daysInMonth; i++) {
     daysArray.push(i);
   }
+
+  // Convert completions to Date objects for comparison
+  const completionDates = completions.map(completion => {
+    // Handle both Firestore Timestamp and regular Date objects
+    if (completion.date && completion.date.toDate) {
+      return completion.date.toDate();
+    } else if (completion.date instanceof Date) {
+      return completion.date;
+    } else if (completion.date) {
+      return new Date(completion.date);
+    }
+    return null;
+  }).filter(date => date !== null);
   // Navigate months
   const goToPreviousMonth = () => {
     if (currentMonth === 0) {
@@ -81,7 +93,7 @@ export const CalendarGrid = ({completions}) => {
       {/* Calendar Days */}
       <View className="flex-row flex-wrap">
         {daysArray.map((day, index) => {
-          const isCompleted = completions?.some(
+          const isCompleted = completionDates.some(
             completionDate =>
               completionDate.getDate() === day &&
               completionDate.getMonth() === currentMonth &&

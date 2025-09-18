@@ -34,7 +34,16 @@ const AddHabitScreen = ({ route }) => {
   const [description, setDescription] = useState(
     habitToEdit?.description || '',
   );
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(() => {
+    if (habitToEdit?.reminder?.time) {
+      // Parse the time string (HH:mm format) and create a Date object
+      const [hours, minutes] = habitToEdit.reminder.time.split(':');
+      const date = new Date();
+      date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+      return date;
+    }
+    return new Date();
+  });
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [reminder, setReminder] = useState(
     habitToEdit?.reminder?.enabled || false,
@@ -144,7 +153,10 @@ const AddHabitScreen = ({ route }) => {
         setSelectedDays([]);
       }
 
-      navigation.navigate('Habbits', { refresh: true });
+      navigation.navigate('MainTabs', { 
+        screen: 'Habits', 
+        params: { refresh: true } 
+      });
     } catch (error) {
       console.error('Error saving habit:', error);
       Alert.alert('Error', 'Failed to save habit. Please try again.');

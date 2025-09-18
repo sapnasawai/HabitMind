@@ -11,92 +11,132 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function BottomTabRootStack({user}) {
+// Bottom Tab Navigator - Main app navigation
+function BottomTabNavigator({user}) {
   return (
     <Tab.Navigator
+      initialRouteName="Habits" // Set Habits as the initial/first screen
       screenOptions={({route}) => ({
         headerShown: true,
         headerStyle: {
-          backgroundColor: '#FFF', // White header background
+          backgroundColor: '#FFF',
+          elevation: 0,
+          shadowOpacity: 0,
         },
-        headerTintColor: '#7C3AED', // Violet color for back button and title
+        headerTintColor: '#7C3AED',
         headerTitleStyle: {
           fontWeight: 'bold',
+          fontSize: 18,
         },
         tabBarStyle: {
           position: 'absolute',
-          height: 60,
+          height: 65,
+          paddingBottom: 8,
+          paddingTop: 8,
+          backgroundColor: '#FFF',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
         },
-
-        tabBarActiveTintColor: '#7C3AED', // violet-600
-        tabBarInactiveTintColor: '#A1A1AA', // gray-400
+        tabBarActiveTintColor: '#7C3AED',
+        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
         tabBarIcon: ({focused, color, size}) => {
           let iconName;
 
-          if (route.name === 'Habbits') {
-            iconName = focused ? 'list-circle' : 'list-circle-outline';
-          } else if (route.name === 'Progress') {
-            iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-          } else if (route.name === 'Profile') {
-            iconName = focused ? 'person-circle' : 'person-circle-outline';
+          switch (route.name) {
+            case 'Habits':
+              iconName = focused ? 'list-circle' : 'list-circle-outline';
+              break;
+            case 'Progress':
+              iconName = focused ? 'bar-chart' : 'bar-chart-outline';
+              break;
+            case 'Profile':
+              iconName = focused ? 'person-circle' : 'person-circle-outline';
+              break;
+            default:
+              iconName = 'help-circle-outline';
           }
 
-          return <Ionicons name={iconName} size={24} color={color} />;
+          return <Ionicons name={iconName} size={size || 24} color={color} />;
         },
       })}>
       <Tab.Screen
-        name="Habbits"
+        name="Habits"
         component={HabbitsScreen}
-        options={{title: "Today's Habits"}}
+        options={{
+          title: "Today's Habits",
+          tabBarLabel: 'Habits',
+        }}
       />
       <Tab.Screen
         name="Progress"
         component={ProgressScreen}
-        options={{title: 'Overall Progress'}}
+        options={{
+          title: 'Overall Progress',
+          tabBarLabel: 'Progress',
+        }}
       />
-      <Tab.Screen name="Profile" options={{title: 'Profile'}}>
+      <Tab.Screen
+        name="Profile"
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+        }}>
         {props => <ProfileScreen {...props} user={user} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
 }
+
+// Main App Navigator
 const AppNavigator = ({user}) => {
   return (
     <Stack.Navigator
+      initialRouteName="MainTabs"
       screenOptions={{
         headerShown: true,
         headerStyle: {
           backgroundColor: '#FFF',
+          elevation: 0,
+          shadowOpacity: 0,
         },
+        headerTintColor: '#7C3AED',
         headerTitleStyle: {
           fontWeight: 'bold',
+          fontSize: 18,
         },
+        cardStyle: {backgroundColor: '#F9FAFB'},
       }}>
+      {/* Main Tab Navigator - This is the home screen */}
       <Stack.Screen
-        name="Tabs"
+        name="MainTabs"
         options={{
-          headerShown: false,
-          contentStyle: {backgroundColor: 'white'},
+          headerShown: false, // Hide header for tab navigator
         }}>
-        {props => <BottomTabRootStack {...props} user={user} />}
+        {props => <BottomTabNavigator {...props} user={user} />}
       </Stack.Screen>
 
+      {/* Modal/Overlay Screens */}
       <Stack.Screen
         name="AddHabit"
         component={AddHabitScreen}
-        options={{title: 'Add New Habit'}}
+        options={{
+          title: 'Add New Habit',
+          presentation: 'modal', // Makes it feel like a modal
+          headerLeft: () => null, // Remove back button, use custom close
+        }}
       />
+      
       <Stack.Screen
         name="HabitDetail"
         component={HabitDetailScreen}
         options={({route}) => ({
           title: route.params?.habitName || 'Habit Details',
+          presentation: 'card', // Standard card presentation
         })}
-      />
-      <Stack.Screen
-        name="Habbits"
-        component={HabbitsScreen}
-        options={{title: "Today's Habits"}}
       />
     </Stack.Navigator>
   );

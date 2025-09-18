@@ -11,6 +11,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useHabitStore } from '../stores';
+import { CalendarGrid } from './CalenderGrid';
 
 const HabitDetailScreen = () => {
   const navigation = useNavigation();
@@ -43,17 +44,42 @@ const HabitDetailScreen = () => {
   const loading = useHabitStore(state => state.loading);
   const error = useHabitStore(state => state.error);
   const deleteHabitFromStore = useHabitStore(state => state.deleteHabit);
+  const completions = useHabitStore(state => state.completions[habitId] || []);
 
-  const handleDeleteHabit = async () => {
-    try {
-      console.log('before deleteHabitFromStore');
-      await deleteHabitFromStore(habitId);
-      console.log('after deleteHabitFromStore');
-      navigation.navigate('Habbits', { refresh: true });
-    } catch (error) {
-      console.error('Error deleting habit:', error);
-      Alert.alert('Error', 'Failed to delete habit. Please try again.');
-    }
+  const handleDeleteHabit = () => {
+    Alert.alert(
+      'Delete Habit',
+      `Are you sure you want to delete "${habit?.name}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('before deleteHabitFromStore');
+              await deleteHabitFromStore(habitId);
+              console.log('after deleteHabitFromStore');
+              navigation.navigate('Habbits', { refresh: true });
+            } catch (error) {
+              console.error('Error deleting habit:', error);
+              Alert.alert('Error', 'Failed to delete habit. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEditHabit = () => {
+    navigation.navigate('AddHabit', { 
+      habitId: habitId,
+      editMode: true,
+      habitData: habit 
+    });
   };
 
   // Show loading state
@@ -117,12 +143,20 @@ const HabitDetailScreen = () => {
           >
             <Icon name="arrow-back" size={24} color="#7C3AED" />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={handleDeleteHabit}
-            className="bg-white/80 rounded-full p-3 shadow-lg"
-          >
-            <Icon name="trash-outline" size={24} color="#ef4444" />
-          </TouchableOpacity>
+          <View className="flex-row space-x-3">
+            <TouchableOpacity
+              onPress={handleEditHabit}
+              className="bg-white/80 rounded-full p-3 shadow-lg"
+            >
+              <Icon name="create-outline" size={24} color="#7C3AED" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleDeleteHabit}
+              className="bg-white/80 rounded-full p-3 shadow-lg"
+            >
+              <Icon name="trash-outline" size={24} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Habit Header Card */}
@@ -182,6 +216,16 @@ const HabitDetailScreen = () => {
                 </Text>
               </View>
             </View>
+          </View>
+        </View>
+
+        {/* Calendar Grid */}
+        <View className="px-6 mb-6">
+          <View className="bg-white rounded-2xl p-6 shadow-md">
+            <Text className="text-lg font-bold text-gray-800 mb-4">
+              Progress Calendar
+            </Text>
+            <CalendarGrid completions={completions} />
           </View>
         </View>
       </ScrollView>

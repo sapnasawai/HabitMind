@@ -294,6 +294,7 @@ const HabbitsScreen = () => {
           onPress={() =>
             navigation.navigate('HabitDetail', {
               habitId: item.id,
+              habitName: item.name,
             })
           }
           className="flex-row items-start flex-1"
@@ -430,15 +431,15 @@ const HabbitsScreen = () => {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        onPress={() => navigation.navigate('ProgressScreen')}
-        className="bg-purple-100 px-4 py-3 rounded-xl flex-row items-center justify-center space-x-2 mb-6 shadow-sm shadow-purple-200"
-      >
-        <Icon name="stats-chart-outline" size={20} color="#7C3AED" />
-        <Text className="text-violet-600 font-semibold text-base">
-          View Overall Progress
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Progress')}
+          className="bg-purple-100 px-4 py-3 rounded-xl flex-row items-center justify-center space-x-2 mb-6 shadow-sm shadow-purple-200"
+        >
+          <Icon name="stats-chart-outline" size={20} color="#7C3AED" />
+          <Text className="text-violet-600 font-semibold text-base">
+            View Overall Progress
+          </Text>
+        </TouchableOpacity>
 
       {habitsWithCompletions.length > 0 ? (
         <FlatList
