@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector, persist } from 'zustand/middleware';
 import firestore from '@react-native-firebase/firestore';
 import auth from '@react-native-firebase/auth';
+import NotificationService from '../services/NotificationService';
 
 // Clean habit store with real-time listeners and proper selectors
 export const useHabitStore = create(
@@ -190,6 +191,20 @@ export const useHabitStore = create(
           habits: state.habits.filter(habit => habit.id !== tempId),
         }));
 
+        // Schedule notification if reminder is enabled
+        if (habitData.reminder?.enabled) {
+          try {
+            await NotificationService.scheduleHabitReminder({
+              id: docRef.id,
+              ...habitData,
+              reminder: habitData.reminder,
+            });
+            console.log('✅ Notification scheduled for habit:', habitData.name);
+          } catch (error) {
+            console.error('❌ Failed to schedule notification:', error);
+          }
+        }
+
         return docRef.id;
       } catch (error) {
         console.error('Error adding habit:', error);
@@ -245,6 +260,27 @@ export const useHabitStore = create(
             lastUpdated: firestore.FieldValue.serverTimestamp(),
           });
 
+        // Handle notification updates
+        if (updatedData.reminder !== undefined) {
+          try {
+            if (updatedData.reminder?.enabled) {
+              // Schedule new notification
+              await NotificationService.scheduleHabitReminder({
+                id: habitId,
+                ...updatedData,
+                reminder: updatedData.reminder,
+              });
+              console.log('✅ Notification updated for habit:', habitId);
+            } else {
+              // Cancel notification
+              await NotificationService.cancelHabitReminder(habitId);
+              console.log('✅ Notification canceled for habit:', habitId);
+            }
+          } catch (error) {
+            console.error('❌ Failed to update notification:', error);
+          }
+        }
+
         return true;
       } catch (error) {
         console.error('Error updating habit:', error);
@@ -288,6 +324,14 @@ export const useHabitStore = create(
           lastUpdated: new Date(),
           error: null,
         }));
+
+        // Cancel notification first
+        try {
+          await NotificationService.cancelHabitReminder(habitId);
+          console.log('✅ Notification canceled for deleted habit:', habitId);
+        } catch (error) {
+          console.error('❌ Failed to cancel notification:', error);
+        }
 
         // Perform Firestore operation in background
         await firestore()
@@ -549,6 +593,24 @@ export const useHabitStore = create(
       console.log('Current state:', state.isInitialized());
       get().cleanupListeners();
       get().initializeListeners();
+    },
+
+    // Reschedule all habit notifications
+    rescheduleAllNotifications: async () => {
+      const { habits } = get();
+      const habitsWithReminders = habits.filter(habit => habit.reminder?.enabled);
+      
+      console.log(`📅 Rescheduling notifications for ${habitsWithReminders.length} habits`);
+      
+      for (const habit of habitsWithReminders) {
+        try {
+          await NotificationService.scheduleHabitReminder(habit);
+        } catch (error) {
+          console.error(`❌ Failed to reschedule notification for ${habit.name}:`, error);
+        }
+      }
+      
+      console.log('✅ All notifications rescheduled');
     },
 
     // Check if habit is completed today

@@ -132,9 +132,17 @@ const ProfileScreen = () => {
         </View>
       </View>
 
+      {/* Debug Button for Notifications */}
+      <TouchableOpacity
+        className="bg-blue-500 py-3 px-6 rounded-lg shadow-md mt-6 w-full max-w-sm flex-row items-center justify-center"
+        onPress={() => navigation.navigate('NotificationTest')}>
+        <Ionicons name="notifications-outline" size={20} color="#fff" style={{marginRight: 8}} />
+        <Text className="text-white font-semibold text-base">Test Notifications</Text>
+      </TouchableOpacity>
+
       {/* Sign Out Button */}
       <TouchableOpacity
-        className="bg-red-500 py-4 px-8 rounded-lg shadow-md mt-10 w-full max-w-sm flex-row items-center justify-center"
+        className="bg-red-500 py-4 px-8 rounded-lg shadow-md mt-4 w-full max-w-sm flex-row items-center justify-center"
         onPress={handleSignOut}>
         <Ionicons name="log-out-outline" size={24} color="#fff" style={{marginRight: 8}} />
         <Text className="text-white font-semibold text-lg">Sign Out</Text>

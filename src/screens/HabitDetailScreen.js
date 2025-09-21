@@ -40,7 +40,9 @@ const HabitDetailScreen = () => {
   }
 
   // Simple selectors
-  const habit = useHabitStore(state => state.habits.find(h => h.id === habitId));
+  const habit = useHabitStore(state =>
+    state.habits.find(h => h.id === habitId),
+  );
   const loading = useHabitStore(state => state.loading);
   const error = useHabitStore(state => state.error);
   const deleteHabitFromStore = useHabitStore(state => state.deleteHabit);
@@ -70,15 +72,15 @@ const HabitDetailScreen = () => {
             }
           },
         },
-      ]
+      ],
     );
   };
 
   const handleEditHabit = () => {
-    navigation.navigate('AddHabit', { 
+    navigation.navigate('AddHabit', {
       habitId: habitId,
       editMode: true,
-      habitData: habit 
+      habitData: habit,
     });
   };
 
@@ -101,7 +103,9 @@ const HabitDetailScreen = () => {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-red-500 text-center text-base mb-4">{error}</Text>
+          <Text className="text-red-500 text-center text-base mb-4">
+            {error}
+          </Text>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             className="bg-red-500 px-6 py-3 rounded-xl"
@@ -136,13 +140,7 @@ const HabitDetailScreen = () => {
     <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View className="flex-row justify-between items-center px-6 pt-4 pb-2">
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            className="bg-white/80 rounded-full p-3 shadow-lg"
-          >
-            <Icon name="arrow-back" size={24} color="#7C3AED" />
-          </TouchableOpacity>
+        <View className="flex-row justify-end items-center px-6 pt-4 pb-2">
           <View className="flex-row space-x-3">
             <TouchableOpacity
               onPress={handleEditHabit}

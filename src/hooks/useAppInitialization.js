@@ -5,7 +5,7 @@ import { useHabitStore, useUserStore } from '../stores';
 // Simple initialization hook that doesn't cause re-renders
 export const useAppInitialization = (user) => {
   const initializedRef = useRef(false);
-  const { initializeListeners, clearAllData, isInitialized, forceReinitialize } = useHabitStore();
+  const { initializeListeners, clearAllData, isInitialized, forceReinitialize, rescheduleAllNotifications } = useHabitStore();
   const { setUser, fetchUserProfile, clearUserData } = useUserStore();
 
   useEffect(() => {
@@ -28,12 +28,19 @@ export const useAppInitialization = (user) => {
           initializeListeners();
           
           // Check initialization status after a short delay
-          setTimeout(() => {
+          setTimeout(async () => {
             const status = isInitialized();
             console.log('📊 Initialization status:', status);
             if (!status.hasListeners && status.hasUser) {
               console.log('⚠️ Listeners not initialized, forcing reinitialize...');
               forceReinitialize();
+            }
+            
+            // Reschedule notifications after initialization
+            try {
+              await rescheduleAllNotifications();
+            } catch (error) {
+              console.error('❌ Failed to reschedule notifications:', error);
             }
           }, 2000);
           

@@ -11,6 +11,8 @@ import SplashScreen from './src/screens/SplashScreen';
 import AuthNavigator from './AuthNavigator';
 import firestore from '@react-native-firebase/firestore';
 import {useAppInitialization} from './src/hooks/useAppInitialization';
+import NotificationService from './src/services/NotificationService';
+import notifee from '@notifee/react-native';
 
 export default function App() {
   const [user, setUser] = React.useState(null);
@@ -24,6 +26,25 @@ export default function App() {
 
   // Initialize stores when user changes
   useAppInitialization(user);
+  
+  // Initialize notifications
+  React.useEffect(() => {
+    const initializeNotifications = async () => {
+      try {
+        const hasPermission = await NotificationService.requestPermissions();
+        if (hasPermission) {
+          console.log('✅ Notification permissions granted');
+        } else {
+          console.log('❌ Notification permissions denied');
+        }
+      } catch (error) {
+        console.error('❌ Error initializing notifications:', error);
+      }
+    };
+    
+    initializeNotifications();
+  }, []);
+
   React.useEffect(() => {
     firestore()
       .settings({persistence: true})
@@ -54,6 +75,28 @@ export default function App() {
 
     // Clear the timeout if the component unmounts
     return () => clearTimeout(timer);
+  }, []);
+
+  // Handle notification press and actions
+  React.useEffect(() => {
+    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+      const { notification, pressAction } = detail;
+      
+      if (type === 1) { // PRESS
+        if (notification?.data?.habitId) {
+          console.log('Notification pressed for habit:', notification.data.habitId);
+          // You can add navigation logic here later
+        }
+      } else if (type === 2) { // ACTION_PRESS
+        if (pressAction?.id && notification?.data) {
+          console.log('Notification action pressed:', pressAction.id);
+          // Handle notification actions
+          NotificationService.handleNotificationAction(pressAction.id, notification.data);
+        }
+      }
+    });
+
+    return unsubscribe;
   }, []);
 
   if (initializing || !splashDurationComplete) {

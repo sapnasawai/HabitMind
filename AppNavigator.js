@@ -6,6 +6,7 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import HabbitsScreen from './src/screens/HabbitsScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import NotificationTestScreen from './src/screens/NotificationTestScreen';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
 const Stack = createNativeStackNavigator();
@@ -134,9 +135,18 @@ const AppNavigator = ({user}) => {
         name="HabitDetail"
         component={HabitDetailScreen}
         options={({route}) => ({
-          title: route.params?.habitName || 'Habit Details',
+          title: 'Habit Details',
           presentation: 'card', // Standard card presentation
         })}
+      />
+      
+      <Stack.Screen
+        name="NotificationTest"
+        component={NotificationTestScreen}
+        options={{
+          title: 'Notification Test',
+          presentation: 'modal',
+        }}
       />
     </Stack.Navigator>
   );
