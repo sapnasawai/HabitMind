@@ -132,13 +132,22 @@ const ProfileScreen = () => {
         </View>
       </View>
 
-      {/* Debug Button for Notifications */}
-      <TouchableOpacity
-        className="bg-blue-500 py-3 px-6 rounded-lg shadow-md mt-6 w-full max-w-sm flex-row items-center justify-center"
-        onPress={() => navigation.navigate('NotificationTest')}>
-        <Ionicons name="notifications-outline" size={20} color="#fff" style={{marginRight: 8}} />
-        <Text className="text-white font-semibold text-base">Test Notifications</Text>
-      </TouchableOpacity>
+      {/* Debug Buttons for Notifications */}
+      <View className="w-full max-w-sm mt-6 space-y-3">
+        <TouchableOpacity
+          className="bg-blue-500 py-3 px-6 rounded-lg shadow-md flex-row items-center justify-center"
+          onPress={() => navigation.navigate('NotificationTest')}>
+          <Ionicons name="notifications-outline" size={20} color="#fff" style={{marginRight: 8}} />
+          <Text className="text-white font-semibold text-base">Test Local Notifications</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          className="bg-green-500 py-3 px-6 rounded-lg shadow-md flex-row items-center justify-center"
+          onPress={() => navigation.navigate('FirebaseMessagingTest')}>
+          <Ionicons name="cloud-outline" size={20} color="#fff" style={{marginRight: 8}} />
+          <Text className="text-white font-semibold text-base">Test Firebase Messaging</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Sign Out Button */}
       <TouchableOpacity

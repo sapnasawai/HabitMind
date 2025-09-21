@@ -7,6 +7,7 @@ import HabbitsScreen from './src/screens/HabbitsScreen';
 import ProgressScreen from './src/screens/ProgressScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import NotificationTestScreen from './src/screens/NotificationTestScreen';
+import FirebaseMessagingTestScreen from './src/screens/FirebaseMessagingTestScreen';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
 const Stack = createNativeStackNavigator();
@@ -145,6 +146,15 @@ const AppNavigator = ({user}) => {
         component={NotificationTestScreen}
         options={{
           title: 'Notification Test',
+          presentation: 'modal',
+        }}
+      />
+      
+      <Stack.Screen
+        name="FirebaseMessagingTest"
+        component={FirebaseMessagingTestScreen}
+        options={{
+          title: 'Firebase Messaging Test',
           presentation: 'modal',
         }}
       />
