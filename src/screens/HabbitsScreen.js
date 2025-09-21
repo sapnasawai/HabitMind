@@ -451,7 +451,7 @@ const HabbitsScreen = () => {
           renderItem={renderHabitCard}
           keyExtractor={item => item.id}
           showsVerticalScrollIndicator={false}
-          className="mt-2"
+          className="mt-2 mb-20"
         />
       ) : (
         noHabits()
