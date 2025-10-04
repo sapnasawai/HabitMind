@@ -172,6 +172,7 @@ const HabbitsScreen = () => {
                       height: 100,
                       borderRadius: 50,
                       backgroundColor: '#8B5CF6',
+                      opacity: 0.3,
                     }}
                   />
                 ))}
