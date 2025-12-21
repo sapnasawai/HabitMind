@@ -2,6 +2,13 @@
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import auth from '@react-native-firebase/auth';
+
+// Get the current authenticated user's ID
+export const getCurrentUserId = () => {
+  const currentUser = auth().currentUser;
+  return currentUser ? currentUser.uid : null;
+};
 
 
 

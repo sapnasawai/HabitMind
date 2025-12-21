@@ -113,9 +113,9 @@ const SignInSignUpScreen = () => {
         // Send email verification
         await sendVerificationEmail(newUser);
         await createUserProfile(
-          newUser.uid,
-          newUser.displayName,
+          newUser.displayName || name.trim(),
           newUser.email,
+          newUser.photoURL,
         );
         Alert.alert(
           'Account Created & Verification Sent',

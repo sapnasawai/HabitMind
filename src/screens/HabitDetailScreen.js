@@ -65,7 +65,7 @@ const HabitDetailScreen = () => {
               console.log('before deleteHabitFromStore');
               await deleteHabitFromStore(habitId);
               console.log('after deleteHabitFromStore');
-              navigation.navigate('Habbits', { refresh: true });
+              navigation.navigate('MainTabs', { screen: 'Habits', params: { refresh: true } });
             } catch (error) {
               console.error('Error deleting habit:', error);
               Alert.alert('Error', 'Failed to delete habit. Please try again.');
@@ -78,9 +78,7 @@ const HabitDetailScreen = () => {
 
   const handleEditHabit = () => {
     navigation.navigate('AddHabit', {
-      habitId: habitId,
-      editMode: true,
-      habitData: habit,
+      habitToEdit: habit,
     });
   };
 

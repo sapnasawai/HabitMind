@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   SafeAreaView,
   Modal,
+  Animated,
 } from 'react-native';
 import {
   useFocusEffect,
@@ -16,7 +17,6 @@ import {
   useRoute,
 } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { MotiView, MotiText } from 'moti';
 import { IconComponents } from '../../ReadData';
 import { useHabitStore, useProgressStore } from '../stores';
 
@@ -107,6 +107,79 @@ const HabbitsScreen = () => {
     }
   };
 
+  // Animation refs for the completion modal
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const checkmarkScale = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const rippleScale = useRef(new Animated.Value(0.5)).current;
+  const rippleOpacity = useRef(new Animated.Value(0.7)).current;
+
+  // Run animations when modal opens
+  useEffect(() => {
+    if (showModal) {
+      // Reset animations
+      scaleAnim.setValue(0.8);
+      opacityAnim.setValue(0);
+      checkmarkScale.setValue(0);
+      textOpacity.setValue(0);
+      rippleScale.setValue(0.5);
+      rippleOpacity.setValue(0.7);
+
+      // Modal container animation
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          damping: 20,
+          stiffness: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Checkmark pop animation
+      Animated.sequence([
+        Animated.delay(200),
+        Animated.spring(checkmarkScale, {
+          toValue: 1,
+          damping: 8,
+          stiffness: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Text fade in
+      Animated.sequence([
+        Animated.delay(400),
+        Animated.timing(textOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Ripple animation
+      Animated.loop(
+        Animated.parallel([
+          Animated.timing(rippleScale, {
+            toValue: 3,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rippleOpacity, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start();
+    }
+  }, [showModal]);
+
   const CompletionModal = () => {
     return (
       <Modal
@@ -125,143 +198,55 @@ const HabbitsScreen = () => {
             onPress={() => {}}
             className="w-full"
           >
-            <MotiView
-              key={showModal ? 'modal-open' : 'modal-closed'}
-              from={{
-                scale: 0.8,
-                opacity: 0,
-                translateY: 50,
-              }}
-              animate={{
-                scale: 1,
-                opacity: 1,
-                translateY: 0,
-              }}
-              transition={{
-                type: 'spring',
-                damping: 20,
-                stiffness: 300,
-                mass: 0.8,
+            <Animated.View
+              style={{
+                transform: [{ scale: scaleAnim }],
+                opacity: opacityAnim,
               }}
               className="bg-white rounded-2xl p-12 items-center shadow-2xl max-w-lg w-full mx-auto overflow-hidden"
             >
-              {/* Wavy animation around checkmark - bigger space */}
+              {/* Wavy animation around checkmark */}
               <View className="items-center justify-center mb-8 relative py-8">
-                {/* Multiple ripple waves around checkmark */}
-                {[...Array(4).keys()].map(index => (
-                  <MotiView
-                    key={`ripple-${index}-${showModal}`}
-                    from={{
-                      scale: 0.5,
-                      opacity: 0.7,
-                    }}
-                    animate={{
-                      scale: [0.5, 3, 4],
-                      opacity: [0.7, 0.3, 0],
-                    }}
-                    transition={{
-                      type: 'timing',
-                      duration: 2500,
-                      delay: index * 300,
-                      loop: true,
-                      repeatReverse: false,
-                    }}
-                    style={{
-                      position: 'absolute',
-                      width: 100,
-                      height: 100,
-                      borderRadius: 50,
-                      backgroundColor: '#8B5CF6',
-                      opacity: 0.3,
-                    }}
-                  />
-                ))}
+                {/* Ripple wave */}
+                <Animated.View
+                  style={{
+                    position: 'absolute',
+                    width: 100,
+                    height: 100,
+                    borderRadius: 50,
+                    backgroundColor: '#8B5CF6',
+                    transform: [{ scale: rippleScale }],
+                    opacity: rippleOpacity,
+                  }}
+                />
 
                 {/* Main checkmark with pop animation */}
-                <MotiView
-                  key={`checkmark-${showModal}`}
-                  from={{
-                    scale: 0,
-                    rotate: '0deg',
+                <Animated.View
+                  style={{
+                    transform: [{ scale: checkmarkScale }],
                   }}
-                  animate={{
-                    scale: [0, 1.4, 1],
-                    rotate: '0deg',
-                  }}
-                  transition={{
-                    type: 'spring',
-                    damping: 8,
-                    stiffness: 150,
-                    delay: 200,
-                  }}
-                  className="w-20 h-20 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full items-center justify-center shadow-xl z-10"
+                  className="w-20 h-20 bg-violet-500 rounded-full items-center justify-center shadow-xl"
                 >
                   <Icon name="checkmark" size={40} color="white" />
-                </MotiView>
+                </Animated.View>
               </View>
 
               {/* Main title */}
-              <MotiText
-                key={`title-${showModal}`}
-                from={{
-                  opacity: 0,
-                  translateY: 20,
-                }}
-                animate={{
-                  opacity: 1,
-                  translateY: 0,
-                }}
-                transition={{
-                  type: 'timing',
-                  duration: 600,
-                  delay: 400,
-                }}
+              <Animated.Text
+                style={{ opacity: textOpacity }}
                 className="text-2xl font-bold text-gray-800 text-center mb-2"
               >
                 Great Job! 🎉
-              </MotiText>
-
-              {/* Habit name */}
-              {/* <MotiText
-                from={{
-                  opacity: 0,
-                  translateY: 15,
-                }}
-                animate={{
-                  opacity: 1,
-                  translateY: 0,
-                }}
-                transition={{
-                  type: 'timing',
-                  duration: 500,
-                  delay: 600,
-                }}
-                className="text-lg text-violet-600 font-semibold text-center mb-4"
-              >
-                "{completedHabitName}"
-              </MotiText> */}
+              </Animated.Text>
 
               {/* Encouragement message */}
-              <MotiText
-                key={`message-${showModal}`}
-                from={{
-                  opacity: 0,
-                  translateY: 15,
-                }}
-                animate={{
-                  opacity: 1,
-                  translateY: 0,
-                }}
-                transition={{
-                  type: 'timing',
-                  duration: 500,
-                  delay: 800,
-                }}
+              <Animated.Text
+                style={{ opacity: textOpacity }}
                 className="text-base text-gray-600 text-center mb-6"
               >
                 Keep up the amazing streak! 💪
-              </MotiText>
-            </MotiView>
+              </Animated.Text>
+            </Animated.View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -391,7 +376,7 @@ const HabbitsScreen = () => {
         <TouchableOpacity
           className="bg-violet-500 py-3 px-6 rounded-lg shadow-md"
           onPress={() => {
-            // Data will be refreshed automatically by real-time listeners
+            forceReinitialize();
           }}
         >
           <Text className="text-white font-semibold text-base">Retry</Text>
@@ -400,33 +385,10 @@ const HabbitsScreen = () => {
     );
   }
 
-  // Debug function (only in development)
-  const handleDebugInfo = () => {
-    const status = isInitialized();
-    Alert.alert(
-      'Debug Info',
-      `User: ${status.hasUser}\nHabits: ${status.hasHabits} (${habits.length})\nListeners: ${status.hasListeners}\nError: ${status.hasError}\nLast Updated: ${status.lastUpdated}`,
-      [
-        { text: 'Force Reinit', onPress: forceReinitialize },
-        { text: 'OK' }
-      ]
-    );
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50 p-4">
       <CompletionModal />
-      <View className="flex-row justify-between items-center mb-4">
-        {/* Debug button (only in development) */}
-        {__DEV__ && (
-          <TouchableOpacity
-            onPress={handleDebugInfo}
-            className="bg-gray-500 px-3 py-2 rounded-md"
-          >
-            <Text className="text-white text-xs">Debug</Text>
-          </TouchableOpacity>
-        )}
-        
+      <View className="flex-row justify-end items-center mb-4">
         <TouchableOpacity
           onPress={() => navigation.navigate('AddHabit')}
           className="bg-violet-400 px-4 py-2 rounded-md flex-row items-center space-x-1"
@@ -435,16 +397,6 @@ const HabbitsScreen = () => {
           <Text className="text-white font-medium text-sm">New Habit</Text>
         </TouchableOpacity>
       </View>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Progress')}
-          className="bg-purple-100 px-4 py-3 rounded-xl flex-row items-center justify-center space-x-2 mb-6 shadow-sm shadow-purple-200"
-        >
-          <Icon name="stats-chart-outline" size={20} color="#7C3AED" />
-          <Text className="text-violet-600 font-semibold text-base">
-            View Overall Progress
-          </Text>
-        </TouchableOpacity>
 
       {habitsWithCompletions.length > 0 ? (
         <FlatList
@@ -462,9 +414,3 @@ const HabbitsScreen = () => {
 };
 
 export default HabbitsScreen;
-
-//TODO: Many problems found in HabitScreen 
-//1. Optimistic updates are not working properly
-//2. When we toggle the habit completion, the habit is not updated immediately, its loading endlessly
-//3. When launched the app, habits are not there, even when i am working suddenly these habits are getting disappeared
-//4. My app should be Offline first app.
