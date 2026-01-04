@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -12,7 +12,7 @@ import {
   Alert,
   Button,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import auth from '@react-native-firebase/auth';
 import {
   GoogleSignin,
@@ -21,20 +21,21 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {createUserProfile} from '../../WriteData';
+import { createUserProfile } from '../../WriteData';
 
 const SignInSignUpScreen = () => {
   const navigation = useNavigation();
-  const [isSignInMode, setIsSignInMode] = useState(true); // Toggle between Sign In and Sign Up
+  const [isSignInMode, setIsSignInMode] = useState(true);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [user, setUser] = useState(null); // To store the authenticated user
+  const [user, setUser] = useState(null);
   const [mobile, setMobile] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Effect to listen for authentication state changes
   useEffect(() => {
@@ -67,12 +68,12 @@ const SignInSignUpScreen = () => {
           password,
         );
         const currentUser = userCredential.user;
-        console.log('currentUser====',currentUser)
-       
+        console.log('currentUser====', currentUser);
+
         await createUserProfile(
           currentUser.displayName,
           currentUser.email,
-          currentUser.photoURL
+          currentUser.photoURL,
         );
         if (currentUser && !currentUser.emailVerified) {
           Alert.alert(
@@ -222,19 +223,34 @@ const SignInSignUpScreen = () => {
       />
 
       <Text className="text-sm font-medium mb-1 text-gray-700">Password</Text>
-      <TextInput
-        placeholder="••••••••"
-        placeholderTextColor="#A0AEC0"
-        className="border border-purple-400 rounded-lg px-4 py-3 mb-6 text-gray-800 text-base"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+
+      <View className="flex-row items-center border border-purple-400 rounded-lg px-4 py-3 mb-6">
+        <TextInput
+          placeholder="••••••••"
+          placeholderTextColor="#A0AEC0"
+          className="flex-1 text-gray-800 text-base"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+        />
+        <TouchableOpacity
+          onPress={() => setShowPassword(prev => !prev)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Icon
+            name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+            size={22}
+            color="#6B7280"
+          />
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity
         className="bg-violet-500 py-4 rounded-lg shadow-md flex-row items-center justify-center"
         onPress={handleAuth}
-        disabled={loading}>
+        disabled={loading}
+      >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -251,7 +267,8 @@ const SignInSignUpScreen = () => {
           setErrorMessage('');
           setEmail('');
           setPassword('');
-        }}>
+        }}
+      >
         <Text className="text-center text-violet-600 font-semibold text-base">
           Don't have an account? Sign Up
         </Text>
@@ -308,7 +325,8 @@ const SignInSignUpScreen = () => {
       <TouchableOpacity
         className="bg-violet-500 py-4 rounded-lg shadow-md flex-row items-center justify-center"
         onPress={handleAuth}
-        disabled={loading}>
+        disabled={loading}
+      >
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
@@ -326,7 +344,8 @@ const SignInSignUpScreen = () => {
           setEmail('');
           setPassword('');
           setName('');
-        }}>
+        }}
+      >
         <Text className="text-center text-violet-600 font-semibold text-base">
           Already have an account? Sign In
         </Text>
@@ -345,7 +364,8 @@ const SignInSignUpScreen = () => {
         </Text>
         <TouchableOpacity
           className="bg-red-500 py-3 px-6 rounded-lg shadow-md"
-          onPress={signOutUser}>
+          onPress={signOutUser}
+        >
           <Text className="text-white font-semibold text-base">Sign Out</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -447,7 +467,8 @@ const SignInSignUpScreen = () => {
         <TouchableOpacity
           className="bg-violet-500 py-3 rounded-lg shadow-md flex-row items-center justify-center w-full max-w-md mb-4"
           onPress={sendOtp}
-          disabled={loading}>
+          disabled={loading}
+        >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -473,7 +494,8 @@ const SignInSignUpScreen = () => {
             <TouchableOpacity
               className="bg-violet-500 py-3 rounded-lg shadow-md flex-row items-center justify-center w-full max-w-md"
               onPress={verfiyOptp}
-              disabled={loading}>
+              disabled={loading}
+            >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -565,7 +587,8 @@ const SignInSignUpScreen = () => {
     return (
       <TouchableOpacity
         className="bg-violet-400 flex-row items-center justify-center py-3 rounded-xl mb-3"
-        onPress={() => signIn()}>
+        onPress={() => signIn()}
+      >
         <Icon name="logo-google" size={18} color="white" className="mr-2" />
         <Text className="text-white font-semibold text-base">
           Sign in with Google
@@ -578,9 +601,11 @@ const SignInSignUpScreen = () => {
     <SafeAreaView className="flex-1 bg-gray-50">
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1 justify-center px-4">
+        className="flex-1 justify-center px-4"
+      >
         <ScrollView
-          contentContainerStyle={{flexGrow: 1, justifyContent: 'center'}}>
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+        >
           {/*TODO : code for phone authentication commented as it needs billing account and giving and err BILLING_NOT_ENABLED  
              {mobileverification()} */}
           {isSignInMode ? renderSignInForm() : renderSignUpForm()}
