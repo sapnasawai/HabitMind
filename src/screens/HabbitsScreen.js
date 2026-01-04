@@ -114,6 +114,7 @@ const HabbitsScreen = () => {
   const textOpacity = useRef(new Animated.Value(0)).current;
   const rippleScale = useRef(new Animated.Value(0.5)).current;
   const rippleOpacity = useRef(new Animated.Value(0.7)).current;
+  const rippleAnimationRef = useRef(null);
 
   // Run animations when modal opens
   useEffect(() => {
@@ -162,8 +163,7 @@ const HabbitsScreen = () => {
         }),
       ]).start();
 
-      // Ripple animation
-      Animated.loop(
+      rippleAnimationRef.current = Animated.loop(
         Animated.parallel([
           Animated.timing(rippleScale, {
             toValue: 3,
@@ -176,8 +176,20 @@ const HabbitsScreen = () => {
             useNativeDriver: true,
           }),
         ]),
-      ).start();
+      );
+      rippleAnimationRef.current.start();
+    } else {
+      if (rippleAnimationRef.current) {
+        rippleAnimationRef.current.stop();
+        rippleAnimationRef.current = null;
+      }
     }
+    return () => {
+      if (rippleAnimationRef.current) {
+        rippleAnimationRef.current.stop();
+        rippleAnimationRef.current = null;
+      }
+    };
   }, [showModal]);
 
   const CompletionModal = () => {
